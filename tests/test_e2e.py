@@ -1,0 +1,240 @@
+"""End-to-end tests for cellos-acp against real agents.
+
+These tests require the agent binaries to be installed and configured.
+Run with: pytest tests/test_e2e.py -v --timeout=30
+"""
+
+import asyncio
+import json
+import pytest
+import subprocess
+import sys
+from pathlib import Path
+
+
+@pytest.fixture(scope="session")
+def opencode_installed():
+    """Check if opencode is available."""
+    try:
+        result = subprocess.run(
+            ["opencode", "--version"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+        return result.returncode == 0
+    except (FileNotFoundError, subprocess.TimeoutExpired):
+        return False
+
+
+@pytest.fixture(scope="session")
+def event_loop():
+    """Create a session-scoped event loop for async tests."""
+    loop = asyncio.new_event_loop()
+    yield loop
+    loop.close()
+
+
+class TestE2EOpencode:
+    """E2E tests against opencode agent."""
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_smoke_test(self):
+        """Basic smoke test - agent responds with expected text."""
+        from cellos_acp import AcpClient
+
+        async def run():
+            client = AcpClient(
+                agent="opencode",
+                cwd=str(Path.cwd()),
+                timeout=30,
+            )
+            result = await client.run("Respond with exactly: SMOKE_TEST_OK")
+            assert result.success
+            assert "SMOKE_TEST_OK" in result.combined_text
+
+        asyncio.run(run())
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_thought_only_mode(self):
+        """Test that thought-only mode promotes thinking to text."""
+        from cellos_acp import AcpClient
+
+        async def run():
+            client = AcpClient(
+                agent="opencode",
+                cwd=str(Path.cwd()),
+                timeout=30,
+            )
+            result = await client.run("What is 2+2? Answer with just the number.")
+            assert result.success
+            assert result.combined_text.strip() in ("4", "2+2 = 4", "2+2=4", "4.")
+
+        asyncio.run(run())
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_json_output_format(self):
+        """Test JSON output format via CLI."""
+        result = subprocess.run(
+            [sys.executable, "-m", "cellos_acp", "run", "--agent", "opencode", "--json", "Say hello"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(Path.cwd()),
+        )
+        assert result.returncode == 0
+        output = json.loads(result.stdout)
+        assert "text" in output
+        assert "thinking" in output
+        assert "tool_calls" in output
+        assert "stop_reason" in output
+        assert "success" in output
+        assert output["success"] is True
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_quiet_output_format(self):
+        """Test quiet output format via CLI."""
+        result = subprocess.run(
+            [sys.executable, "-m", "cellos_acp", "run", "--agent", "opencode", "--quiet", "Say hello"],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(Path.cwd()),
+        )
+        assert result.returncode == 0
+        # Quiet mode should only output text, no JSON formatting
+        assert not result.stdout.strip().startswith("{")
+        assert "hello" in result.stdout.lower()
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_custom_command(self):
+        """Test custom command override."""
+        from cellos_acp import AcpClient
+
+        async def run():
+            client = AcpClient(
+                command="opencode",
+                args=["acp"],
+                cwd=str(Path.cwd()),
+                timeout=30,
+                thought_only=True,  # opencode requires this
+            )
+            result = await client.run("Respond with exactly: CUSTOM_CMD_OK")
+            assert result.success
+            assert "CUSTOM_CMD_OK" in result.combined_text
+
+        asyncio.run(run())
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_timeout_handling(self):
+        """Test that timeout returns error result."""
+        from cellos_acp import AcpClient
+
+        async def run():
+            client = AcpClient(
+                agent="opencode",
+                cwd=str(Path.cwd()),
+                timeout=0.001,  # Very short timeout
+            )
+            result = await client.run("This should timeout")
+            assert result.success is False
+            assert result.error is not None
+            assert "timeout" in str(result.error).lower()
+
+        asyncio.run(run())
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_cli_list_agents(self):
+        """Test CLI list command."""
+        result = subprocess.run(
+            [sys.executable, "-m", "cellos_acp", "list"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(Path.cwd()),
+        )
+        assert result.returncode == 0
+        assert "opencode" in result.stdout
+        assert "claude" in result.stdout
+        assert "hermes" in result.stdout
+
+
+class TestE2ERegistry:
+    """E2E tests for adapter registry."""
+
+    def test_all_adapters_have_commands(self):
+        """All registered adapters have valid commands."""
+        from cellos_acp.registry import _registry
+
+        for name in _registry.list_names():
+            adapter = _registry.get(name)
+            assert adapter is not None
+            assert adapter.command
+            assert adapter.full_command()
+
+    def test_adapter_quirks(self):
+        """Test that thought_only quirk is set correctly."""
+        from cellos_acp.registry import get_adapter
+
+        opencode = get_adapter("opencode")
+        assert opencode.quirks.get("thought_only") is True
+
+        claude = get_adapter("claude")
+        assert claude.quirks.get("thought_only") is False
+
+
+class TestE2EClient:
+    """E2E tests for client initialization."""
+
+    def test_client_initialization(self):
+        """Test client can be initialized with various parameters."""
+        from cellos_acp import AcpClient
+
+        # Basic initialization
+        client = AcpClient(agent="opencode")
+        assert client._command == "opencode"
+        assert client._args == ["acp"]
+
+        # Custom command
+        client = AcpClient(command="custom", args=["--test"])
+        assert client._command == "custom"
+        assert client._args == ["--test"]
+
+        # Custom env
+        client = AcpClient(agent="opencode", env={"TEST": "value"})
+        assert client._env == {"TEST": "value"}
+
+    def test_client_timeout(self):
+        """Test timeout parameter."""
+        from cellos_acp import AcpClient
+
+        client = AcpClient(agent="opencode", timeout=30)
+        assert client._timeout == 30
+
+        client = AcpClient(agent="opencode")
+        assert client._timeout is None
+
+
+if __name__ == "__main__":
+    pytest.main([__file__, "-v", "--timeout=30"])
