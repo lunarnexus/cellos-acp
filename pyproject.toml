@@ -1,0 +1,20 @@
+[project]
+name = "cellos-acp"
+version = "0.1.0"
+description = "Lightweight ACP client with multi-agent adapters for CelloS"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "agent-client-protocol>=0.1.0",
+    "click>=8.0",
+]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0", "pytest-asyncio>=0.24"]
+
+[project.scripts]
+cellos-acp = "cellos_acp.__main__:cli"
+
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
