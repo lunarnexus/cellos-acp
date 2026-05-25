@@ -4,9 +4,22 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import sys
 
 import click
+
+# Suppress SDK error spam from non-JSON debug lines (opencode LMStudio plugin)
+# The SDK uses logging.exception() (ERROR level) for non-JSON lines it skips gracefully
+# This filter specifically targets the SDK's JSON parse errors while preserving other errors
+class AcpJsonFilter(logging.Filter):
+    """Suppress SDK error spam from non-JSON debug lines."""
+    def filter(self, record):
+        if "Error parsing JSON-RPC message" in record.getMessage():
+            return False
+        return True
+
+logging.getLogger().addFilter(AcpJsonFilter())
 
 from .client import AcpClient
 from .registry import _registry
@@ -24,12 +37,13 @@ def cli():
 @click.option("--custom-cmd", help="Custom command instead of registered adapter")
 @click.option("--custom-args", multiple=True, help="Custom args (repeatable)")
 @click.option("--cwd", default=".", help="Working directory")
-@click.option("--timeout", type=float, default=120, help="Timeout in seconds")
+@click.option("--timeout", type=float, default=300, help="Timeout in seconds (default: 300)")
+@click.option("--quiet-wait", type=float, default=1.0, help="Seconds to wait for late chunks (0 to disable)")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--quiet", is_flag=True, help="Only print combined text")
 def run(
-    prompt, agent, custom_cmd, custom_args, cwd, timeout, no_approve, json_output, quiet
+    prompt, agent, custom_cmd, custom_args, cwd, timeout, quiet_wait, no_approve, json_output, quiet
 ):
     """Run a prompt against an ACP agent."""
 
@@ -40,6 +54,7 @@ def run(
         cwd=cwd,
         auto_approve=not no_approve,
         timeout=timeout,
+        quiet_wait=quiet_wait,
     )
 
     result = asyncio.run(client.run(prompt))

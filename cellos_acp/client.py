@@ -147,6 +147,7 @@ class AcpClient:
         thought_only: bool | None = None,
         auto_approve: bool = True,
         timeout: float | None = None,
+        quiet_wait: float = 1.0,
     ):
         """
         Args:
@@ -158,6 +159,8 @@ class AcpClient:
             thought_only: Force thought-only mode. Auto-detected from adapter quirks.
             auto_approve: Auto-approve all permission requests.
             timeout: Total timeout in seconds for the entire lifecycle.
+            quiet_wait: Seconds to wait after response for late streaming chunks.
+                Set to 0 to disable. Default 1.0 for agents that send chunks after result.
         """
         from .registry import get_adapter
 
@@ -178,12 +181,13 @@ class AcpClient:
         self._thought_only = thought_only
         self._auto_approve = auto_approve
         self._timeout = timeout
+        self._quiet_wait = quiet_wait
 
     async def run(self, prompt: str) -> AcpRunResult:
         """Execute a prompt against the agent and return the result.
 
-        After the prompt response arrives, waits for a quiet period
-        (no events for 1s) to catch late streaming chunks.
+        After the prompt response arrives, waits `quiet_wait` seconds
+        to catch late streaming chunks (opencode sends chunks after result).
         """
 
         impl = _AcpClientImpl(
@@ -223,8 +227,9 @@ class AcpClient:
                     ) or ""
 
                 # Wait for late events (opencode sends chunks after result)
-                # Monitor for a quiet period of 1 second
-                await asyncio.sleep(1)
+                # Only wait if quiet_wait > 0
+                if self._quiet_wait > 0:
+                    await asyncio.sleep(self._quiet_wait)
 
                 return impl.collector.to_result()
 
