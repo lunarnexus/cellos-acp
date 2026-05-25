@@ -2,7 +2,7 @@
 
 Run each step sequentially. Verify the **Expected** output before proceeding.
 
-All tests use `opencode` (default agent). Steps 1-6 and 13 are CLI. Steps 7-12 are Python API (run from project dir with `uv run`).
+All tests use `opencode` (default agent). Steps 1-6, 13-14, 17 are CLI. Steps 7-12, 15-16, 18 are Python API (run from project dir with `uv run`). Steps 10-11 are unit tests.
 
 ## Prerequisites
 
@@ -211,6 +211,93 @@ cellos-acp run "Say hi" --text-wait 0 --text
 
 ---
 
+## 14. CLI: --cwd option
+
+```bash
+cellos-acp run "What directory are you in?" --cwd /tmp --text
+```
+
+**Expected:** Agent responds (should mention /tmp or equivalent). Verifies `--cwd` is passed through.
+
+---
+
+## 15. Python API: env parameter
+
+```bash
+uv run python3 -c "
+import asyncio
+from cellos_acp import AcpClient
+
+async def main():
+    # env is merged with adapter env; verify it's accepted without error
+    client = AcpClient(agent='opencode', env={'TEST_VAR': 'hello'})
+    assert client._env.get('TEST_VAR') == 'hello'
+    print('OK: env parameter accepted')
+
+asyncio.run(main())
+"
+```
+
+**Expected:** `OK: env parameter accepted`
+
+---
+
+## 16. Python API: Unknown agent error
+
+```bash
+uv run python3 -c "
+import asyncio
+from cellos_acp import AcpClient
+
+async def main():
+    result = await AcpClient(agent='nonexistent').run('hi')
+    assert not result.success
+    assert result.error is not None
+    assert 'Unknown agent' in str(result.error) or 'nonexistent' in str(result.error)
+    print('OK: unknown agent raises error')
+
+asyncio.run(main())
+"
+```
+
+**Expected:** `OK: unknown agent raises error`
+
+---
+
+## 17. CLI: Agent not found (binary missing)
+
+```bash
+cellos-acp run --custom-cmd nonexistent_binary --custom-args test "hi" --json
+```
+
+**Expected:** JSON with `success: false` and `error` containing information about the missing binary.
+
+---
+
+## 18. Python API: Tool call collection
+
+```bash
+uv run python3 -c "
+import asyncio
+from cellos_acp import AcpClient
+
+async def main():
+    result = await AcpClient(agent='opencode', timeout=30).run(
+        'List files in the current directory. Use a tool if available.'
+    )
+    assert result.success
+    print(f'OK: {len(result.tool_calls)} tool calls captured')
+    for tc in result.tool_calls:
+        print(f'  [{tc.status}] {tc.title}')
+
+asyncio.run(main())
+"
+```
+
+**Expected:** `OK: N tool calls captured` (N may be 0 if agent doesn't use tools). Verifies tool call path doesn't crash.
+
+---
+
 ## Summary
 
 | # | Test | Type | Live Agent? |
@@ -228,3 +315,8 @@ cellos-acp run "Say hi" --text-wait 0 --text
 | 11 | Result dataclass | Unit | no |
 | 12 | text_wait=0 | API | yes |
 | 13 | --text-wait=0 | CLI | yes |
+| 14 | --cwd option | CLI | yes |
+| 15 | env parameter | Unit | no |
+| 16 | Unknown agent error | API | no |
+| 17 | Binary missing error | CLI | no |
+| 18 | Tool call collection | API | yes |

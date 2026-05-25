@@ -154,6 +154,8 @@ The user wants me to answer what 2+2 is...
 --- stop: end_turn ---
 ```
 
+If `text` is empty, shows `(empty)` instead. If `thinking` is empty, that section is omitted entirely.
+
 **JSON output format:**
 
 ```json
@@ -276,6 +278,14 @@ cd ./cellos-acp
 
 # Quick check
 cellos-acp run --text "Respond with exactly: SMOKE_OK"
+
+# Unit tests
+cd ./cellos-acp
+uv run pytest tests/test_client.py -v
+
+# E2E tests (requires opencode)
+cd ./cellos-acp
+uv run pytest tests/test_e2e.py -v --timeout=30
 ```
 
 ## Dependencies
