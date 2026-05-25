@@ -7,6 +7,12 @@ All tests use `opencode` (default agent). Steps 1-6, 13-14, 17 are CLI. Steps 7-
 ## Prerequisites
 
 ```bash
+pipx uninstall cellos-acp && pipx install /path/to/cellos-acp
+```
+
+**Expected:** Fresh install of current source. This ensures the CLI binary matches the code you're testing — stale pipx installs are a common source of false failures (e.g. old `--quiet-wait` vs new `--text-wait`).
+
+```bash
 which cellos-acp && which opencode
 ```
 
