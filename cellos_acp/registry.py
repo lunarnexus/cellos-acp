@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any, Protocol
+from typing import Any
 
 
 @dataclasses.dataclass
@@ -22,7 +22,6 @@ class AgentAdapter:
     command: str
     args: list[str] = dataclasses.field(default_factory=list)
     env: dict[str, str] = dataclasses.field(default_factory=dict)
-    quirks: dict[str, Any] = dataclasses.field(default_factory=dict)
 
     def full_command(self) -> list[str]:
         return [self.command, *self.args]

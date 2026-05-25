@@ -38,12 +38,12 @@ def cli():
 @click.option("--custom-args", multiple=True, help="Custom args (repeatable)")
 @click.option("--cwd", default=".", help="Working directory")
 @click.option("--timeout", type=float, default=300, help="Timeout in seconds (default: 300)")
-@click.option("--quiet-wait", type=float, default=1.0, help="Seconds to wait for late chunks (0 to disable)")
+@click.option("--text-wait", type=float, default=1.0, help="Seconds to wait for late chunks (0 to disable)")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--text", "text_output", is_flag=True, help="Only print combined text")
 def run(
-    prompt, agent, custom_cmd, custom_args, cwd, timeout, quiet_wait, no_approve, json_output, text_output
+    prompt, agent, custom_cmd, custom_args, cwd, timeout, text_wait, no_approve, json_output, text_output
 ):
     """Run a prompt against an ACP agent."""
 
@@ -54,7 +54,7 @@ def run(
         cwd=cwd,
         auto_approve=not no_approve,
         timeout=timeout,
-        quiet_wait=quiet_wait,
+        text_wait=text_wait,
     )
 
     result = asyncio.run(client.run(prompt))
@@ -85,8 +85,7 @@ def list_agents():
     for name in _registry.list_names():
         adapter = _registry.get(name)
         cmd = " ".join(adapter.full_command())
-        quirks = ", ".join(f"{k}={v}" for k, v in adapter.quirks.items()) or "(none)"
-        click.echo(f"  {name:12s}  {cmd:40s}  {quirks}")
+        click.echo(f"  {name:12s}  {cmd:40s}")
 
 
 def _result_to_dict(result) -> dict:

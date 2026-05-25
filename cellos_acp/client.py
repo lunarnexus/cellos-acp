@@ -140,7 +140,7 @@ class AcpClient:
         env: dict[str, str] | None = None,
         auto_approve: bool = True,
         timeout: float | None = None,
-        quiet_wait: float = 1.0,
+        text_wait: float = 1.0,
     ):
         """
         Args:
@@ -151,7 +151,7 @@ class AcpClient:
             env: Extra environment variables.
             auto_approve: Auto-approve all permission requests.
             timeout: Total timeout in seconds for the entire lifecycle.
-            quiet_wait: Seconds to wait after response for late streaming chunks.
+            text_wait: Seconds to wait after response for late streaming chunks.
                 Set to 0 to disable. Default 1.0 for agents that send chunks after result.
         """
         from .registry import get_adapter
@@ -159,21 +159,23 @@ class AcpClient:
         if command is not None:
             self._command = command
             self._args = args or []
+            adapter_env = {}
         else:
             adapter = get_adapter(agent)
             self._command = adapter.command
             self._args = adapter.args
+            adapter_env = adapter.env or {}
 
         self._cwd = cwd
-        self._env = env
+        self._env = {**adapter_env, **(env or {})}
         self._auto_approve = auto_approve
         self._timeout = timeout
-        self._quiet_wait = quiet_wait
+        self._text_wait = text_wait
 
     async def run(self, prompt: str) -> AcpRunResult:
         """Execute a prompt against the agent and return the result.
 
-        After the prompt response arrives, waits `quiet_wait` seconds
+        After the prompt response arrives, waits `text_wait` seconds
         to catch late streaming chunks (opencode sends chunks after result).
         """
 
@@ -213,9 +215,9 @@ class AcpClient:
                     ) or ""
 
                 # Wait for late events (opencode sends chunks after result)
-                # Only wait if quiet_wait > 0
-                if self._quiet_wait > 0:
-                    await asyncio.sleep(self._quiet_wait)
+                # Only wait if text_wait > 0
+                if self._text_wait > 0:
+                    await asyncio.sleep(self._text_wait)
 
                 return impl.collector.to_result()
 
