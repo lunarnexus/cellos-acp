@@ -2,7 +2,7 @@
 
 Run each step sequentially. Verify the **Expected** output before proceeding.
 
-All tests use `opencode` (default agent). Steps 1-6 are CLI. Steps 7-11 are Python API (run from project dir with `uv run`).
+All tests use `opencode` (default agent). Steps 1-6 and 13 are CLI. Steps 7-12 are Python API (run from project dir with `uv run`).
 
 ## Prerequisites
 
@@ -201,6 +201,16 @@ asyncio.run(main())
 
 ---
 
+## 13. CLI: --text-wait=0
+
+```bash
+cellos-acp run "Say hi" --text-wait 0 --text
+```
+
+**Expected:** A greeting, no headers, and no extra 1s text wait overhead.
+
+---
+
 ## Summary
 
 | # | Test | Type | Live Agent? |
@@ -217,3 +227,4 @@ asyncio.run(main())
 | 10 | Registry | Unit | no |
 | 11 | Result dataclass | Unit | no |
 | 12 | text_wait=0 | API | yes |
+| 13 | --text-wait=0 | CLI | yes |

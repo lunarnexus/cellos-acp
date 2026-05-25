@@ -31,7 +31,7 @@ cellos-acp
 │   └── cellos-acp run/list
 │
 ├── AcpClient
-│   ├── AgentRegistry → maps names to commands/args/quirks
+│   ├── AgentRegistry → maps names to commands/args/env
 │   ├── _EventCollector → accumulates events into AcpRunResult
 │   └── _AcpClientImpl → implements ACP Client interface
 │
@@ -49,7 +49,7 @@ cellos-acp
 | Schema models (Pydantic) | ✅ | Uses them |
 | Agent registry | ❌ | Built-in + extensible |
 | Unified `AcpRunResult` | ❌ | `.text`, `.thinking`, `.tool_calls` |
-| Late-chunk handling | ❌ | Configurable quiet wait |
+| Late-chunk handling | ❌ | Configurable text wait |
 | Auto-approve permissions | ❌ | Configurable default |
 | CLI | ❌ | `cellos-acp run/list` |
 
@@ -197,7 +197,7 @@ async def main():
         env={"VAR": "val"},     # extra environment variables
         auto_approve=True,      # auto-approve permission requests
         timeout=300,            # total timeout in seconds (None = no timeout)
-        text_wait=1.0,         # seconds to wait for late streaming chunks
+        text_wait=1.0,          # seconds to wait for late streaming chunks
     )
     result = await client.run("Explain the codebase")
 
@@ -228,7 +228,7 @@ class AcpRunResult:
 class ToolCallRecord:
     tool_call_id: str
     title: str
-    status: str          # "running", "completed", "failed"
+    status: str          # latest status from tool progress events, or ""
     raw_input: dict
     raw_output: Any
 ```
@@ -265,7 +265,7 @@ _registry.register(AgentAdapter(
 
 ### Late streaming chunks
 
-Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits `text_wait` seconds (default 1.0) after the response to catch late events. Set to 0 to disable.
+Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits `text_wait` seconds (default 1.0) after the response to catch late events. Set to 0 to disable. The Python API default timeout is 300 seconds; pass `timeout=None` for no timeout.
 
 ## Testing
 
