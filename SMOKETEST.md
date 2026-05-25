@@ -252,21 +252,18 @@ asyncio.run(main())
 
 ```bash
 uv run python3 -c "
-import asyncio
 from cellos_acp import AcpClient
 
-async def main():
-    result = await AcpClient(agent='nonexistent').run('hi')
-    assert not result.success
-    assert result.error is not None
-    assert 'Unknown agent' in str(result.error) or 'nonexistent' in str(result.error)
-    print('OK: unknown agent raises error')
-
-asyncio.run(main())
+try:
+    AcpClient(agent='nonexistent')
+    print('FAIL: should have raised KeyError')
+except KeyError as e:
+    assert 'nonexistent' in str(e)
+    print('OK: unknown agent raises KeyError in __init__')
 "
 ```
 
-**Expected:** `OK: unknown agent raises error`
+**Expected:** `OK: unknown agent raises KeyError in __init__`
 
 ---
 
