@@ -50,26 +50,11 @@ def test_registry_list():
     assert len(names) >= 3
 
 
-def test_event_collector_thought_only_promotes():
-    from cellos_acp.client import _EventCollector
-    from acp.schema import AgentThoughtChunk, TextContentBlock
-
-    collector = _EventCollector(thought_only=True)
-    chunk = AgentThoughtChunk(
-        content=TextContentBlock(type="text", text="thought text"),
-        session_update="agent_thought_chunk",
-    )
-    collector.on_thought_chunk(chunk)
-    result = collector.to_result()
-    assert result.text == "thought text"
-    assert result.thinking == ""
-
-
-def test_event_collector_normal_mode():
+def test_event_collector_separates_text_and_thinking():
     from cellos_acp.client import _EventCollector
     from acp.schema import AgentMessageChunk, AgentThoughtChunk, TextContentBlock
 
-    collector = _EventCollector(thought_only=False)
+    collector = _EventCollector()
     collector.on_message_chunk(
         AgentMessageChunk(
             content=TextContentBlock(type="text", text="msg"),

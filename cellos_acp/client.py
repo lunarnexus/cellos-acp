@@ -31,8 +31,7 @@ logger = logging.getLogger(__name__)
 class _EventCollector:
     """Collects ACP events into an AcpRunResult."""
 
-    def __init__(self, thought_only: bool = False):
-        self.thought_only = thought_only
+    def __init__(self):
         self.text_parts: list[str] = []
         self.thinking_parts: list[str] = []
         self.tool_calls: dict[str, ToolCallRecord] = {}
@@ -67,11 +66,6 @@ class _EventCollector:
         text = "".join(self.text_parts)
         thinking = "".join(self.thinking_parts)
 
-        # For thought-only adapters (opencode), promote thinking → text
-        if self.thought_only and not text and thinking:
-            text = thinking
-            thinking = ""
-
         return AcpRunResult(
             text=text,
             thinking=thinking,
@@ -83,8 +77,8 @@ class _EventCollector:
 class _AcpClientImpl(Client):
     """ACP Client interface implementation backed by an EventCollector."""
 
-    def __init__(self, thought_only: bool = False, auto_approve: bool = True):
-        self.collector = _EventCollector(thought_only=thought_only)
+    def __init__(self, auto_approve: bool = True):
+        self.collector = _EventCollector()
         self.auto_approve = auto_approve
 
     async def session_update(
@@ -144,7 +138,6 @@ class AcpClient:
         args: list[str] | None = None,
         cwd: str = ".",
         env: dict[str, str] | None = None,
-        thought_only: bool | None = None,
         auto_approve: bool = True,
         timeout: float | None = None,
         quiet_wait: float = 1.0,
@@ -156,7 +149,6 @@ class AcpClient:
             args: Override args (ignores adapter).
             cwd: Working directory for the agent.
             env: Extra environment variables.
-            thought_only: Force thought-only mode. Auto-detected from adapter quirks.
             auto_approve: Auto-approve all permission requests.
             timeout: Total timeout in seconds for the entire lifecycle.
             quiet_wait: Seconds to wait after response for late streaming chunks.
@@ -167,18 +159,13 @@ class AcpClient:
         if command is not None:
             self._command = command
             self._args = args or []
-            if thought_only is None:
-                thought_only = False
         else:
             adapter = get_adapter(agent)
             self._command = adapter.command
             self._args = adapter.args
-            if thought_only is None:
-                thought_only = adapter.quirks.get("thought_only", False)
 
         self._cwd = cwd
         self._env = env
-        self._thought_only = thought_only
         self._auto_approve = auto_approve
         self._timeout = timeout
         self._quiet_wait = quiet_wait
@@ -191,7 +178,6 @@ class AcpClient:
         """
 
         impl = _AcpClientImpl(
-            thought_only=self._thought_only,
             auto_approve=self._auto_approve,
         )
 

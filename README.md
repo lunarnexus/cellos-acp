@@ -48,7 +48,7 @@ cellos-acp
 | Subprocess + JSON-RPC framing | ✅ | Uses it |
 | Schema models (Pydantic) | ✅ | Uses them |
 | Agent registry | ❌ | Built-in + extensible |
-| Adapter quirks (thought_only) | ❌ | Per-adapter config |
+| Adapter quirks | ❌ | Per-adapter config |
 | Unified `AcpRunResult` | ❌ | `.text`, `.thinking`, `.tool_calls` |
 | Late-chunk handling | ❌ | Configurable quiet wait |
 | Auto-approve permissions | ❌ | Configurable default |
@@ -92,12 +92,12 @@ List available agent adapters:
 
 ```bash
 $ cellos-acp list
-  opencode      opencode acp                              thought_only=True
-  claude        claude --experimental-acp                 thought_only=False
-  codex         codex --acp                               thought_only=False
-  hermes        hermes acp                                thought_only=False
-  openclaw      acpx openclaw exec                        thought_only=False
-  pi            pi acp                                    thought_only=False
+  opencode      opencode acp
+  claude        claude --experimental-acp
+  codex         codex --acp
+  hermes        hermes acp
+  openclaw      acpx openclaw exec
+  pi            pi acp
 ```
 
 ### `cellos-acp run`
@@ -119,7 +119,6 @@ cellos-acp run [OPTIONS] PROMPT
 | `--timeout` | `300` | Total timeout in seconds |
 | `--quiet-wait` | `1.0` | Seconds to wait for late streaming chunks (0 to disable) |
 | `--no-approve` | `false` | Don't auto-approve permission requests |
-| `--thought-only` | `false` | Force thought-only mode (promote thinking → text) |
 | `--json` | `false` | Output result as JSON |
 | `--quiet` | `false` | Only print combined text |
 
@@ -197,7 +196,6 @@ async def main():
         args=None,              # override args (ignores adapter)
         cwd="/tmp/project",     # working directory
         env={"VAR": "val"},     # extra environment variables
-        thought_only=None,      # force thought-only mode (auto from adapter)
         auto_approve=True,      # auto-approve permission requests
         timeout=300,            # total timeout in seconds (None = no timeout)
         quiet_wait=1.0,         # seconds to wait for late streaming chunks
@@ -239,11 +237,7 @@ class ToolCallRecord:
 ### Registry
 
 ```python
-from cellos_acp import get_adapter, AgentRegistry, AgentAdapter
-
-# Get a registered adapter
-adapter = get_adapter("opencode")
-print(adapter.full_command())  # ["opencode", "acp"]
+from cellos_acp import AgentRegistry, AgentAdapter
 
 # Register a custom adapter
 registry = AgentRegistry()
@@ -251,7 +245,6 @@ registry.register(AgentAdapter(
     name="my-agent",
     command="my-agent",
     args=["--acp-mode"],
-    quirks={"thought_only": False},
 ))
 # Now available as: AcpClient(agent="my-agent")
 ```
@@ -260,20 +253,16 @@ registry.register(AgentAdapter(
 
 ### Built-in
 
-| Name | Command | Quirks | Status |
-|---|---|---|---|
-| `opencode` | `opencode acp` | `thought_only=True` | ✅ Working |
-| `claude` | `claude --experimental-acp` | — | Future |
-| `codex` | `codex --acp` | — | Future |
-| `hermes` | `hermes acp` | — | Future |
-| `openclaw` | `acpx openclaw exec` | — | Future |
-| `pi` | `pi acp` | — | Future |
+| Name | Command | Status |
+|---|---|---|
+| `opencode` | `opencode acp` | ✅ Working |
+| `claude` | `claude --experimental-acp` | Future |
+| `codex` | `codex --acp` | Future |
+| `hermes` | `hermes acp` | Future |
+| `openclaw` | `acpx openclaw exec` | Future |
+| `pi` | `pi acp` | Future |
 
 > **Note:** Only `opencode` is currently tested and working. Other adapters are placeholders for future integration.
-
-### `thought_only` mode
-
-Some agents route ALL content through `AgentThoughtChunk` events with zero `AgentMessageChunk` events. When `thought_only=True`, the collector promotes thinking → text so `.combined_text` returns the actual response.
 
 ### Late streaming chunks
 

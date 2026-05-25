@@ -20,7 +20,7 @@ which cellos-acp && which opencode
 cellos-acp list
 ```
 
-**Expected:** 6 agents listed. opencode shows `thought_only=True`.
+**Expected:** 6 agents listed with commands.
 
 ---
 
@@ -143,7 +143,7 @@ uv run python3 -c "
 from cellos_acp import get_adapter, AgentRegistry
 
 adapter = get_adapter('opencode')
-assert adapter.command == 'opencode' and adapter.quirks.get('thought_only')
+assert adapter.command == 'opencode' and adapter.args == ['acp']
 print(f'OK: {adapter.full_command()}')
 
 try:

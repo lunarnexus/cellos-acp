@@ -35,40 +35,31 @@ ADAPTERS: dict[str, AgentAdapter] = {
         name="opencode",
         command="opencode",
         args=["acp"],
-        quirks={
-            # opencode routes ALL content through AgentThoughtChunk
-            "thought_only": True,
-        },
     ),
     "openclaw": AgentAdapter(
         name="openclaw",
         command="acpx",
         args=["openclaw", "exec"],
-        quirks={"thought_only": False},
     ),
     "hermes": AgentAdapter(
         name="hermes",
         command="hermes",
         args=["acp"],
-        quirks={"thought_only": False},
     ),
     "pi": AgentAdapter(
         name="pi",
         command="pi",
         args=["acp"],
-        quirks={"thought_only": False},
     ),
     "claude": AgentAdapter(
         name="claude",
         command="claude",
         args=["--experimental-acp"],
-        quirks={"thought_only": False},
     ),
     "codex": AgentAdapter(
         name="codex",
         command="codex",
         args=["--acp"],
-        quirks={"thought_only": False},
     ),
 }
 

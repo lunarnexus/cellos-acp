@@ -54,8 +54,8 @@ class TestE2EOpencode:
         not opencode_installed,
         reason="opencode not installed",
     )
-    def test_thought_only_mode(self):
-        """Test that thought-only mode promotes thinking to text."""
+    def test_text_and_thinking_separated(self):
+        """Test that text and thinking are properly separated."""
         from cellos_acp import AcpClient
 
         async def run():
@@ -66,7 +66,6 @@ class TestE2EOpencode:
             )
             result = await client.run("What is 2+2? Answer with just the number.")
             assert result.success
-            # Model might output "4", "2+2 = 4", "The answer is 4", etc.
             assert "4" in result.combined_text
 
         asyncio.run(run())
@@ -126,7 +125,6 @@ class TestE2EOpencode:
                 args=["acp"],
                 cwd=str(Path.cwd()),
                 timeout=30,
-                thought_only=True,  # opencode requires this
             )
             result = await client.run("Respond with exactly: CUSTOM_CMD_OK")
             assert result.success
@@ -189,16 +187,6 @@ class TestE2ERegistry:
             assert adapter is not None
             assert adapter.command
             assert adapter.full_command()
-
-    def test_adapter_quirks(self):
-        """Test that thought_only quirk is set correctly."""
-        from cellos_acp.registry import get_adapter
-
-        opencode = get_adapter("opencode")
-        assert opencode.quirks.get("thought_only") is True
-
-        claude = get_adapter("claude")
-        assert claude.quirks.get("thought_only") is False
 
 
 class TestE2EClient:
