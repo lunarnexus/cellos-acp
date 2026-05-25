@@ -218,7 +218,7 @@ class TestE2EClient:
         assert client._timeout == 30
 
         client = AcpClient(agent="opencode")
-        assert client._timeout is None
+        assert client._timeout == 300
 
 
 if __name__ == "__main__":

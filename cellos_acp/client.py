@@ -100,13 +100,16 @@ class _AcpClientImpl(Client):
         **kwargs: Any,
     ) -> RequestPermissionResponse:
         if self.auto_approve:
-            # Prefer an explicit allow option, otherwise select an offered option.
-            allow_id = options[0].option_id if options else ""
+            # Only auto-approve if an explicit "allow" option exists.
+            allow_id = ""
             for opt in options:
                 if "allow" in opt.option_id.lower():
                     allow_id = opt.option_id
                     break
             if not allow_id:
+                logger.warning(
+                    "No 'allow' option found in permission request; cancelling."
+                )
                 return RequestPermissionResponse(
                     outcome=AllowedOutcome(outcome="cancelled")
                 )
