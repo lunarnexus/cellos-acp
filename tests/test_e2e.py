@@ -96,17 +96,17 @@ class TestE2EOpencode:
         not opencode_installed,
         reason="opencode not installed",
     )
-    def test_quiet_output_format(self):
-        """Test quiet output format via CLI."""
+    def test_text_output_format(self):
+        """Test text output format via CLI."""
         result = subprocess.run(
-            [sys.executable, "-m", "cellos_acp", "run", "--agent", "opencode", "--quiet", "Say hello"],
+            [sys.executable, "-m", "cellos_acp", "run", "--agent", "opencode", "--text", "Say hello"],
             capture_output=True,
             text=True,
             timeout=30,
             cwd=str(Path.cwd()),
         )
         assert result.returncode == 0
-        # Quiet mode should only output text, no JSON formatting
+        # Text mode should only output text, no JSON formatting
         assert not result.stdout.strip().startswith("{")
         # Model might not use exact word "hello" but should respond
         assert len(result.stdout.strip()) > 0

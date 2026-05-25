@@ -41,9 +41,9 @@ def cli():
 @click.option("--quiet-wait", type=float, default=1.0, help="Seconds to wait for late chunks (0 to disable)")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
-@click.option("--quiet", is_flag=True, help="Only print combined text")
+@click.option("--text", "text_output", is_flag=True, help="Only print combined text")
 def run(
-    prompt, agent, custom_cmd, custom_args, cwd, timeout, quiet_wait, no_approve, json_output, quiet
+    prompt, agent, custom_cmd, custom_args, cwd, timeout, quiet_wait, no_approve, json_output, text_output
 ):
     """Run a prompt against an ACP agent."""
 
@@ -61,7 +61,7 @@ def run(
 
     if json_output:
         click.echo(json.dumps(_result_to_dict(result), indent=2))
-    elif quiet:
+    elif text_output:
         click.echo(result.combined_text)
     else:
         if result.error:

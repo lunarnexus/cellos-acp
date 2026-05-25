@@ -17,7 +17,7 @@ cellos-acp list
 cellos-acp run --agent opencode "What is 2+2?"
 
 # Text-only output
-cellos-acp run --quiet "What is 2+2?"
+cellos-acp run --text "What is 2+2?"
 
 # JSON output
 cellos-acp run --json "What is 2+2?"
@@ -117,10 +117,10 @@ cellos-acp run [OPTIONS] PROMPT
 | `--custom-args` | *(none)* | Override args (repeatable, ignores adapter) |
 | `--cwd` | `.` | Working directory for the agent |
 | `--timeout` | `300` | Total timeout in seconds |
-| `--quiet-wait` | `1.0` | Seconds to wait for late streaming chunks (0 to disable) |
+| `--text-wait` | `1.0` | Seconds to wait for late streaming chunks (0 to disable) |
 | `--no-approve` | `false` | Don't auto-approve permission requests |
 | `--json` | `false` | Output result as JSON |
-| `--quiet` | `false` | Only print combined text |
+| `--text` | `false` | Only print combined text |
 
 **Examples:**
 
@@ -128,8 +128,8 @@ cellos-acp run [OPTIONS] PROMPT
 # Default (verbose text output)
 cellos-acp run "Explain this code"
 
-# Quiet mode — text only
-cellos-acp run --quiet "What is 2+2?"
+# Text-only mode — text only
+cellos-acp run --text "What is 2+2?"
 
 # JSON output — structured result
 cellos-acp run --json "What is 2+2?"
@@ -276,7 +276,7 @@ cd ./cellos-acp
 # See SMOKETEST.md for full test suite
 
 # Quick check
-cellos-acp run --quiet "Respond with exactly: SMOKE_OK"
+cellos-acp run --text "Respond with exactly: SMOKE_OK"
 ```
 
 ## Dependencies

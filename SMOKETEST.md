@@ -27,7 +27,7 @@ cellos-acp list
 ## 2. CLI: Simple prompt
 
 ```bash
-cellos-acp run "Say hello in three words" --quiet
+cellos-acp run "Say hello in three words" --text
 ```
 
 **Expected:** A short greeting, no headers.
@@ -47,7 +47,7 @@ cellos-acp run "Reply with the number four" --json
 ## 4. CLI: Custom command (bypass registry)
 
 ```bash
-cellos-acp run "Say hi" --custom-cmd opencode --custom-args acp --timeout 60 --quiet
+cellos-acp run "Say hi" --custom-cmd opencode --custom-args acp --timeout 60 --text
 ```
 
 **Expected:** A greeting.
@@ -67,7 +67,7 @@ cellos-acp run "Write a very long essay" --timeout 2 --json
 ## 6. CLI: No auto-approve
 
 ```bash
-cellos-acp run "Say something brief" --no-approve --quiet
+cellos-acp run "Say something brief" --no-approve --text
 ```
 
 **Expected:** Agent responds without crashing.
