@@ -8,7 +8,7 @@ Designed as a standalone library — import it, pick an adapter, call `run(promp
 
 ```bash
 # Install
-pipx install ~/workspace/cellos-acp
+pipx install ./cellos-acp
 
 # List available agents
 cellos-acp list
@@ -41,9 +41,9 @@ cellos-acp
     └── Pydantic schema models → typed ACP messages
 ```
 
-**What `cellos-acp` adds over the raw SDK:**
+**What `cellos-acp` adds over the raw `agent-client-protocol` library:**
 
-| Feature | SDK | cellos-acp |
+| Feature | agent-client-protocol | cellos-acp |
 |---|---|---|
 | Subprocess + JSON-RPC framing | ✅ | Uses it |
 | Schema models (Pydantic) | ✅ | Uses them |
@@ -59,19 +59,19 @@ cellos-acp
 ### System-wide via pipx
 
 ```bash
-pipx install ~/workspace/cellos-acp
+pipx install ./cellos-acp
 ```
 
 Reinstall after changes:
 
 ```bash
-pipx uninstall cellos-acp && pipx install ~/workspace/cellos-acp
+pipx uninstall cellos-acp && pipx install ./cellos-acp
 ```
 
 ### Development (editable)
 
 ```bash
-cd ~/workspace/cellos-acp
+cd ./cellos-acp
 uv venv .venv
 source .venv/bin/activate
 uv pip install -e ".[test]"
@@ -80,7 +80,7 @@ uv pip install -e ".[test]"
 ### Direct module (no install)
 
 ```bash
-cd ~/workspace/cellos-acp
+cd ./cellos-acp
 python3 -m cellos_acp --help
 ```
 
@@ -119,6 +119,7 @@ cellos-acp run [OPTIONS] PROMPT
 | `--timeout` | `300` | Total timeout in seconds |
 | `--quiet-wait` | `1.0` | Seconds to wait for late streaming chunks (0 to disable) |
 | `--no-approve` | `false` | Don't auto-approve permission requests |
+| `--thought-only` | `false` | Force thought-only mode (promote thinking → text) |
 | `--json` | `false` | Output result as JSON |
 | `--quiet` | `false` | Only print combined text |
 
@@ -259,14 +260,16 @@ registry.register(AgentAdapter(
 
 ### Built-in
 
-| Name | Command | Quirks |
-|---|---|---|
-| `opencode` | `opencode acp` | `thought_only=True` |
-| `claude` | `claude --experimental-acp` | — |
-| `codex` | `codex --acp` | — |
-| `hermes` | `hermes acp` | — |
-| `openclaw` | `acpx openclaw exec` | — |
-| `pi` | `pi acp` | — |
+| Name | Command | Quirks | Status |
+|---|---|---|---|
+| `opencode` | `opencode acp` | `thought_only=True` | ✅ Working |
+| `claude` | `claude --experimental-acp` | — | Future |
+| `codex` | `codex --acp` | — | Future |
+| `hermes` | `hermes acp` | — | Future |
+| `openclaw` | `acpx openclaw exec` | — | Future |
+| `pi` | `pi acp` | — | Future |
+
+> **Note:** Only `opencode` is currently tested and working. Other adapters are placeholders for future integration.
 
 ### `thought_only` mode
 
@@ -280,7 +283,7 @@ Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits `
 
 ```bash
 # Smoke tests
-cd ~/workspace/cellos-acp
+cd ./cellos-acp
 # See SMOKETEST.md for full test suite
 
 # Quick check

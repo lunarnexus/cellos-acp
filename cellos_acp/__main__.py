@@ -40,10 +40,11 @@ def cli():
 @click.option("--timeout", type=float, default=300, help="Timeout in seconds (default: 300)")
 @click.option("--quiet-wait", type=float, default=1.0, help="Seconds to wait for late chunks (0 to disable)")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
+@click.option("--thought-only", is_flag=True, help="Force thought-only mode (promote thinking → text)")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--quiet", is_flag=True, help="Only print combined text")
 def run(
-    prompt, agent, custom_cmd, custom_args, cwd, timeout, quiet_wait, no_approve, json_output, quiet
+    prompt, agent, custom_cmd, custom_args, cwd, timeout, quiet_wait, no_approve, thought_only, json_output, quiet
 ):
     """Run a prompt against an ACP agent."""
 
@@ -53,6 +54,7 @@ def run(
         args=list(custom_args) if custom_args else None,
         cwd=cwd,
         auto_approve=not no_approve,
+        thought_only=thought_only,
         timeout=timeout,
         quiet_wait=quiet_wait,
     )
