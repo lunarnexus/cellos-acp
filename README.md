@@ -48,7 +48,6 @@ cellos-acp
 | Subprocess + JSON-RPC framing | ✅ | Uses it |
 | Schema models (Pydantic) | ✅ | Uses them |
 | Agent registry | ❌ | Built-in + extensible |
-| Adapter quirks | ❌ | Per-adapter config |
 | Unified `AcpRunResult` | ❌ | `.text`, `.thinking`, `.tool_calls` |
 | Late-chunk handling | ❌ | Configurable quiet wait |
 | Auto-approve permissions | ❌ | Configurable default |
@@ -198,7 +197,7 @@ async def main():
         env={"VAR": "val"},     # extra environment variables
         auto_approve=True,      # auto-approve permission requests
         timeout=300,            # total timeout in seconds (None = no timeout)
-        quiet_wait=1.0,         # seconds to wait for late streaming chunks
+        text_wait=1.0,         # seconds to wait for late streaming chunks
     )
     result = await client.run("Explain the codebase")
 
@@ -237,11 +236,11 @@ class ToolCallRecord:
 ### Registry
 
 ```python
-from cellos_acp import AgentRegistry, AgentAdapter
+from cellos_acp import AgentAdapter
+from cellos_acp.registry import _registry
 
-# Register a custom adapter
-registry = AgentRegistry()
-registry.register(AgentAdapter(
+# Register a custom adapter (uses the global registry)
+_registry.register(AgentAdapter(
     name="my-agent",
     command="my-agent",
     args=["--acp-mode"],
@@ -266,7 +265,7 @@ registry.register(AgentAdapter(
 
 ### Late streaming chunks
 
-Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits `quiet_wait` seconds (default 1.0) after the response to catch late events. Set to 0 to disable.
+Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits `text_wait` seconds (default 1.0) after the response to catch late events. Set to 0 to disable.
 
 ## Testing
 

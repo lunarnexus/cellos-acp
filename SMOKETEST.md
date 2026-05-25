@@ -57,10 +57,12 @@ cellos-acp run "Say hi" --custom-cmd opencode --custom-args acp --timeout 60 --t
 ## 5. CLI: Timeout
 
 ```bash
-cellos-acp run "Write a very long essay" --timeout 2 --json
+cellos-acp run "Write a detailed 500-word essay about the history of computing" --timeout 2 --json
 ```
 
 **Expected:** JSON with `success: false` and `error` containing "timeout".
+
+> **Note:** If agent startup is fast on your machine, the prompt may complete in 2s. Increase `--timeout` to a value lower than expected generation time, or use a longer prompt.
 
 ---
 
@@ -96,7 +98,7 @@ asyncio.run(main())
 
 ---
 
-## 8. Python API: Thought-only mode (opencode quirk)
+## 8. Python API: combined_text fallback
 
 ```bash
 uv run python3 -c "
@@ -105,14 +107,14 @@ from cellos_acp import AcpClient
 
 async def main():
     result = await AcpClient(agent='opencode').run('Name a fruit')
-    assert result.text, 'text should not be empty'
-    print(f'OK: {repr(result.text[:50])}')
+    assert result.combined_text, 'combined_text should not be empty'
+    print(f'OK: {repr(result.combined_text[:50])}')
 
 asyncio.run(main())
 "
 ```
 
-**Expected:** `text` populated (promoted from thinking).
+**Expected:** `combined_text` populated (prefers `text`, falls back to `thinking`).
 
 ---
 
@@ -124,7 +126,7 @@ import asyncio
 from cellos_acp import AcpClient
 
 async def main():
-    result = await AcpClient(agent='opencode', timeout=1, quiet_wait=0).run('Write a very long response')
+    result = await AcpClient(agent='opencode', timeout=1, text_wait=0).run('Write a very long response')
     assert not result.success
     print('OK: timeout handled')
 
@@ -176,6 +178,29 @@ print('OK: result tests passed')
 
 ---
 
+## 12. Python API: text_wait=0
+
+```bash
+uv run python3 -c "
+import asyncio
+import time
+from cellos_acp import AcpClient
+
+async def main():
+    start = time.monotonic()
+    result = await AcpClient(agent='opencode', text_wait=0).run('Say hi')
+    elapsed = time.monotonic() - start
+    assert result.success
+    print(f'OK: {elapsed:.1f}s (no extra wait)')
+
+asyncio.run(main())
+"
+```
+
+**Expected:** Completes quickly without the 1s text wait overhead.
+
+---
+
 ## Summary
 
 | # | Test | Type | Live Agent? |
@@ -187,7 +212,8 @@ print('OK: result tests passed')
 | 5 | Timeout | CLI | yes |
 | 6 | No auto-approve | CLI | yes |
 | 7 | Import + run | API | yes |
-| 8 | Thought-only | API | yes |
+| 8 | combined_text fallback | API | yes |
 | 9 | Timeout | API | yes |
 | 10 | Registry | Unit | no |
 | 11 | Result dataclass | Unit | no |
+| 12 | text_wait=0 | API | yes |
