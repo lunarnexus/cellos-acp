@@ -8,7 +8,6 @@ from typing import Any
 from uuid import uuid4
 
 from acp import PROTOCOL_VERSION, spawn_agent_process, text_block
-from acp.client.connection import ClientSideConnection
 from acp.interfaces import Client
 from acp.schema import (
     AgentMessageChunk,
@@ -101,12 +100,16 @@ class _AcpClientImpl(Client):
         **kwargs: Any,
     ) -> RequestPermissionResponse:
         if self.auto_approve:
-            # Default: allow the first "allow" option, or the first option
-            allow_id = "allow"
+            # Prefer an explicit allow option, otherwise select an offered option.
+            allow_id = options[0].option_id if options else ""
             for opt in options:
                 if "allow" in opt.option_id.lower():
                     allow_id = opt.option_id
                     break
+            if not allow_id:
+                return RequestPermissionResponse(
+                    outcome=AllowedOutcome(outcome="cancelled")
+                )
             return RequestPermissionResponse(
                 outcome=AllowedOutcome(outcome="selected", option_id=allow_id)
             )
@@ -139,7 +142,7 @@ class AcpClient:
         cwd: str = ".",
         env: dict[str, str] | None = None,
         auto_approve: bool = True,
-        timeout: float | None = None,
+        timeout: float | None = 300,
         text_wait: float = 1.0,
     ):
         """
@@ -225,9 +228,12 @@ class AcpClient:
             try:
                 return await asyncio.wait_for(_execute(), timeout=self._timeout)
             except asyncio.TimeoutError:
-                return AcpRunResult(error=TimeoutError(f"ACP timeout after {self._timeout}s"))
-        else:
-            try:
-                return await _execute()
+                return AcpRunResult(
+                    error=TimeoutError(f"ACP timeout after {self._timeout}s")
+                )
             except Exception as e:
                 return AcpRunResult(error=e)
+        try:
+            return await _execute()
+        except Exception as e:
+            return AcpRunResult(error=e)

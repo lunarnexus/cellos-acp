@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import dataclasses
-from typing import Any
 
 
 @dataclasses.dataclass
@@ -15,7 +14,6 @@ class AgentAdapter:
         command: Executable to spawn.
         args: Arguments passed to the executable (e.g. ["acp"]).
         env: Extra environment variables (merged with os.environ).
-        quirks: Adapter-specific behavior flags.
     """
 
     name: str

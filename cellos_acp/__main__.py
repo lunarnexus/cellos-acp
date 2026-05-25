@@ -61,7 +61,12 @@ def run(
 
     if json_output:
         click.echo(json.dumps(_result_to_dict(result), indent=2))
+        if result.error:
+            sys.exit(1)
     elif text_output:
+        if result.error:
+            click.echo(f"ERROR: {result.error}", err=True)
+            sys.exit(1)
         click.echo(result.combined_text)
     else:
         if result.error:
