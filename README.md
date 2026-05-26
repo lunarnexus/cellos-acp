@@ -4,6 +4,8 @@ Lightweight ACP client with multi-agent adapters. Wraps the official [`agent-cli
 
 Designed as a standalone library — import it, pick an adapter, call `run(prompt)`, get back a unified `AcpRunResult`.
 
+This was actually built to work with Cellos (https://github.com/lunarnexus/cellos/) to handle ACP calls, but it's generic enough to work with almost anything.
+
 ## Quick start
 
 ```bash
