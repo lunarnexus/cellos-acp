@@ -6,3 +6,4 @@ dist/
 .venv/
 *.so
 .pytest_cache/
+.codegraph/
