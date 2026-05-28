@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import dataclasses
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 @dataclasses.dataclass
@@ -87,4 +90,5 @@ def get_adapter(name: str) -> AgentAdapter:
         raise KeyError(
             f"Unknown agent '{name}'. Available: {_registry.list_names()}"
         )
+    logger.debug("adapter resolved: %s -> %s", name, adapter.full_command())
     return adapter

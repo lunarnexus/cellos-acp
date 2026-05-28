@@ -285,7 +285,7 @@ import asyncio
 from cellos_acp import AcpClient
 
 async def main():
-    result = await AcpClient(agent='opencode', timeout=30).run(
+    result = await AcpClient(agent='opencode', timeout=120).run(
         'List files in the current directory. Use a tool if available.'
     )
     assert result.success
@@ -297,7 +297,52 @@ asyncio.run(main())
 "
 ```
 
-**Expected:** `OK: N tool calls captured` (N may be 0 if agent doesn't use tools). Verifies tool call path doesn't crash.
+**Expected:** `OK: N tool calls captured` (N may be 0 if agent doesn't use tools). Verifies tool call path doesn't crash. Note: 120s timeout needed for agents that use tools.
+
+---
+
+## 19. CLI: Debug log file
+
+```bash
+cellos-acp run "Say hi" --log-file /tmp/cellos-smoketest.log --text
+```
+
+**Expected:** A greeting on stdout. `/tmp/cellos-smoketest.log` exists and contains debug entries.
+
+```bash
+cat /tmp/cellos-smoketest.log
+```
+
+**Expected:** Log file contains timestamps, DEBUG-level entries (spawn, session, prompt, events), and no `[TRUNCATED]` markers for this short prompt.
+
+---
+
+## 20. Python API: Logging configuration
+
+```bash
+uv run python3 -c "
+import asyncio
+from cellos_acp import configure_logging, AcpClient
+
+log_file = configure_logging('/tmp/cellos-smoketest-py.log')
+assert log_file == '/tmp/cellos-smoketest-py.log'
+
+async def main():
+    result = await AcpClient(agent='opencode', timeout=30).run('Say hi')
+    assert result.success
+    print('OK: run completed with logging enabled')
+
+asyncio.run(main())
+"
+```
+
+**Expected:** `OK: run completed with logging enabled`. `/tmp/cellos-smoketest-py.log` exists with debug entries.
+
+```bash
+cat /tmp/cellos-smoketest-py.log
+```
+
+**Expected:** Log file contains DEBUG entries for client init, spawn, session, prompt, and events.
 
 ---
 
@@ -323,3 +368,5 @@ asyncio.run(main())
 | 16 | Unknown agent error | API | no |
 | 17 | Binary missing error | CLI | no |
 | 18 | Tool call collection | API | yes |
+| 19 | Debug log file | CLI | yes |
+| 20 | Logging configuration | API | yes |

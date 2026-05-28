@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from typing import Any
 from uuid import uuid4
@@ -26,6 +27,16 @@ from .result import AcpRunResult, ToolCallRecord
 
 logger = logging.getLogger(__name__)
 
+_DEBUG_TRUNCATE = 500
+
+
+def _debug_truncate(value: Any, limit: int = _DEBUG_TRUNCATE) -> str:
+    """Truncate a value for debug logging, appending [TRUNCATED] marker."""
+    s = json.dumps(value, default=str) if not isinstance(value, str) else value
+    if len(s) <= limit:
+        return s
+    return f"{s[:limit]}... [TRUNCATED: {len(s)} chars total]"
+
 
 class _EventCollector:
     """Collects ACP events into an AcpRunResult."""
@@ -41,14 +52,22 @@ class _EventCollector:
         if content and hasattr(content, "text"):
             text = content.text
             if text:
+                logger.debug("message_chunk: %s", _debug_truncate(text))
                 self.text_parts.append(text)
 
     def on_thought_chunk(self, chunk: AgentThoughtChunk) -> None:
         content = getattr(chunk, "content", None)
         if content and hasattr(content, "text"):
+            logger.debug("thought_chunk: %s", _debug_truncate(content.text))
             self.thinking_parts.append(content.text)
 
     def on_tool_start(self, update: ToolCallStart) -> None:
+        logger.debug(
+            "tool_start id=%s title=%s input=%s",
+            update.tool_call_id,
+            update.title or "",
+            _debug_truncate(update.raw_input or {}),
+        )
         self.tool_calls[update.tool_call_id] = ToolCallRecord(
             tool_call_id=update.tool_call_id,
             title=update.title or "",
@@ -60,10 +79,24 @@ class _EventCollector:
         if rec:
             rec.status = update.status or ""
             rec.raw_output = update.raw_output
+            logger.debug(
+                "tool_progress id=%s status=%s output=%s",
+                update.tool_call_id,
+                update.status or "",
+                _debug_truncate(update.raw_output),
+            )
 
     def to_result(self) -> AcpRunResult:
         text = "".join(self.text_parts)
         thinking = "".join(self.thinking_parts)
+
+        logger.debug(
+            "to_result text=%d thinking=%d tools=%d stop=%s",
+            len(text),
+            len(thinking),
+            len(self.tool_calls),
+            self.stop_reason,
+        )
 
         return AcpRunResult(
             text=text,
@@ -83,6 +116,8 @@ class _AcpClientImpl(Client):
     async def session_update(
         self, session_id: str, update: Any, **kwargs: Any
     ) -> None:
+        update_type = type(update).__name__
+        logger.debug("session_update session=%s type=%s", session_id, update_type)
         if isinstance(update, AgentMessageChunk):
             self.collector.on_message_chunk(update)
         elif isinstance(update, AgentThoughtChunk):
@@ -99,6 +134,13 @@ class _AcpClientImpl(Client):
         tool_call: ToolCallUpdate,
         **kwargs: Any,
     ) -> RequestPermissionResponse:
+        option_ids = [opt.option_id for opt in options]
+        logger.debug(
+            "request_permission session=%s options=%s auto_approve=%s",
+            session_id,
+            option_ids,
+            self.auto_approve,
+        )
         if self.auto_approve:
             # Only auto-approve if an explicit "allow" option exists.
             allow_id = ""
@@ -113,10 +155,11 @@ class _AcpClientImpl(Client):
                 return RequestPermissionResponse(
                     outcome=AllowedOutcome(outcome="cancelled")
                 )
+            logger.debug("permission auto-approved: option=%s", allow_id)
             return RequestPermissionResponse(
                 outcome=AllowedOutcome(outcome="selected", option_id=allow_id)
             )
-        # If not auto-approve, deny by default
+        logger.debug("permission denied (auto_approve=False)")
         return RequestPermissionResponse(
             outcome=AllowedOutcome(outcome="cancelled")
         )
@@ -178,6 +221,16 @@ class AcpClient:
         self._timeout = timeout
         self._text_wait = text_wait
 
+        logger.debug(
+            "AcpClient init command=%s args=%s cwd=%s timeout=%s text_wait=%s auto_approve=%s",
+            self._command,
+            self._args,
+            self._cwd,
+            self._timeout,
+            self._text_wait,
+            self._auto_approve,
+        )
+
     async def run(self, prompt: str) -> AcpRunResult:
         """Execute a prompt against the agent and return the result.
 
@@ -191,11 +244,15 @@ class AcpClient:
 
         async def _execute() -> AcpRunResult:
             env = dict(self._env) if self._env else None
+            cmd_line = [self._command, *self._args]
+
+            logger.debug("spawning %s cwd=%s env=%s", cmd_line, self._cwd, env)
 
             async with spawn_agent_process(
                 impl, self._command, *self._args, env=env, cwd=self._cwd
             ) as (conn, proc):
                 # Initialize
+                logger.debug("initializing protocol=%s", PROTOCOL_VERSION)
                 await conn.initialize(
                     protocol_version=PROTOCOL_VERSION,
                     client_info=Implementation(
@@ -206,12 +263,17 @@ class AcpClient:
 
                 # Create session
                 session = await conn.new_session(cwd=self._cwd)
+                logger.debug("session created id=%s", session.session_id)
 
                 # Send prompt
+                msg_id = str(uuid4())
+                logger.debug(
+                    "sending prompt len=%s id=%s", len(prompt), msg_id
+                )
                 response = await conn.prompt(
                     session_id=session.session_id,
                     prompt=[text_block(prompt)],
-                    message_id=str(uuid4()),
+                    message_id=msg_id,
                 )
 
                 # Extract stop reason
@@ -219,10 +281,15 @@ class AcpClient:
                     impl.collector.stop_reason = getattr(
                         response, "stop_reason", ""
                     ) or ""
+                    logger.debug(
+                        "response received stop_reason=%s",
+                        impl.collector.stop_reason,
+                    )
 
                 # Wait for late events (opencode sends chunks after result)
                 # Only wait if text_wait > 0
                 if self._text_wait > 0:
+                    logger.debug("waiting %.1fs for late chunks", self._text_wait)
                     await asyncio.sleep(self._text_wait)
 
                 return impl.collector.to_result()
@@ -231,12 +298,17 @@ class AcpClient:
             try:
                 return await asyncio.wait_for(_execute(), timeout=self._timeout)
             except asyncio.TimeoutError:
+                logger.error(
+                    "ACP timeout after %.1fs", self._timeout, exc_info=True
+                )
                 return AcpRunResult(
                     error=TimeoutError(f"ACP timeout after {self._timeout}s")
                 )
             except Exception as e:
+                logger.error("execution error: %s", e, exc_info=True)
                 return AcpRunResult(error=e)
         try:
             return await _execute()
         except Exception as e:
+            logger.error("execution error: %s", e, exc_info=True)
             return AcpRunResult(error=e)

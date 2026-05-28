@@ -6,10 +6,16 @@ Run with: pytest tests/test_e2e.py -v --timeout=30
 
 import asyncio
 import json
+import os
 import pytest
 import subprocess
 import sys
 from pathlib import Path
+
+
+@pytest.fixture
+def log_file(tmp_path):
+    return str(tmp_path / "test-cellos-acp.log")
 
 
 @pytest.fixture(scope="session")
@@ -106,9 +112,7 @@ class TestE2EOpencode:
             cwd=str(Path.cwd()),
         )
         assert result.returncode == 0
-        # Text mode should only output text, no JSON formatting
         assert not result.stdout.strip().startswith("{")
-        # Model might not use exact word "hello" but should respond
         assert len(result.stdout.strip()) > 0
 
     @pytest.mark.skipif(
@@ -144,9 +148,8 @@ class TestE2EOpencode:
             client = AcpClient(
                 agent="opencode",
                 cwd=str(Path.cwd()),
-                timeout=1,  # Short enough to timeout, long enough for startup
+                timeout=1,
             )
-            # Prompt that requires significant generation time
             result = await client.run(
                 "Write a detailed 500-word essay about the history of computing"
             )
@@ -196,17 +199,14 @@ class TestE2EClient:
         """Test client can be initialized with various parameters."""
         from cellos_acp import AcpClient
 
-        # Basic initialization
         client = AcpClient(agent="opencode")
         assert client._command == "opencode"
         assert client._args == ["acp"]
 
-        # Custom command
         client = AcpClient(command="custom", args=["--test"])
         assert client._command == "custom"
         assert client._args == ["--test"]
 
-        # Custom env
         client = AcpClient(agent="opencode", env={"TEST": "value"})
         assert client._env == {"TEST": "value"}
 
@@ -219,6 +219,101 @@ class TestE2EClient:
 
         client = AcpClient(agent="opencode")
         assert client._timeout == 300
+
+
+class TestE2ELogging:
+    """E2E tests for debug logging."""
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_cli_log_file_created(self, log_file):
+        """CLI --log-file creates log file with debug entries."""
+        result = subprocess.run(
+            [
+                sys.executable, "-m", "cellos_acp", "run",
+                "--agent", "opencode",
+                "--log-file", log_file,
+                "--text",
+                "Say hi"
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(Path.cwd()),
+        )
+        assert result.returncode == 0
+        assert os.path.exists(log_file)
+        content = open(log_file).read()
+        assert "DEBUG" in content
+        assert "spawning" in content
+
+    @pytest.mark.skipif(
+        not opencode_installed,
+        reason="opencode not installed",
+    )
+    def test_cli_log_contains_session_and_prompt(self, log_file):
+        """Log file contains session creation and prompt data."""
+        result = subprocess.run(
+            [
+                sys.executable, "-m", "cellos_acp", "run",
+                "--agent", "opencode",
+                "--log-file", log_file,
+                "--text",
+                "Say hello"
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            cwd=str(Path.cwd()),
+        )
+        assert result.returncode == 0
+        content = open(log_file).read()
+        assert "session created" in content
+        assert "sending prompt" in content
+
+    def test_python_configure_logging(self, log_file):
+        """Python API configure_logging() creates file handler."""
+        from cellos_acp import configure_logging
+
+        returned = configure_logging(log_file)
+        assert returned == log_file
+        assert os.path.exists(log_file)
+        content = open(log_file).read()
+        assert "cellos-acp logging configured" in content
+
+    def test_python_api_logging_on_run(self, log_file):
+        """Python API run with logging captures debug entries."""
+        import asyncio
+        from cellos_acp import configure_logging, AcpClient
+
+        configure_logging(log_file)
+
+        async def run():
+            return await AcpClient(
+                agent="opencode",
+                cwd=str(Path.cwd()),
+                timeout=30,
+            ).run("Say hi")
+
+        if opencode_installed:
+            result = asyncio.run(run())
+            assert result.success
+            content = open(log_file).read()
+            assert "AcpClient init" in content
+            assert "spawning" in content
+        else:
+            pytest.skip("opencode not installed")
+
+    def test_logging_truncation_marker(self, log_file):
+        """Long content is truncated with [TRUNCATED] marker."""
+        from cellos_acp.client import _debug_truncate
+
+        long_text = "x" * 1000
+        truncated = _debug_truncate(long_text)
+        assert "[TRUNCATED: 1000 chars total]" in truncated
+        assert len(truncated.split("[TRUNCATED")[0]) < 1000
 
 
 if __name__ == "__main__":

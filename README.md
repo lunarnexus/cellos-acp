@@ -122,6 +122,7 @@ cellos-acp run [OPTIONS] PROMPT
 | `--no-approve` | `false` | Don't auto-approve permission requests |
 | `--json` | `false` | Output result as JSON |
 | `--text` | `false` | Only print combined text |
+| `--log-file` | `/tmp/cellos-acp.log` | Path to debug log file |
 
 **Examples:**
 
@@ -134,6 +135,9 @@ cellos-acp run --text "What is 2+2?"
 
 # JSON output — structured result
 cellos-acp run --json "What is 2+2?"
+
+# With debug log file
+cellos-acp run --log-file /tmp/my-log.log "What is 2+2?"
 
 # Custom command (unregistered agent)
 cellos-acp run --custom-cmd my-agent --custom-args --acp-mode "Hello"
@@ -157,6 +161,18 @@ The user wants me to answer what 2+2 is...
 ```
 
 If `text` is empty, shows `(empty)` instead. If `thinking` is empty, that section is omitted entirely.
+
+**Debug logging:**
+
+All runs write debug logs to a file (default: `/tmp/cellos-acp.log`). Logs include errors, process spawn details, session IDs, prompt data, event chunks, tool calls, and permission decisions. Long content is truncated with a `[TRUNCATED: N chars total]` marker. Logs go only to the file — they never appear in CLI output or affect Python return values.
+
+```bash
+# Check the log after a run
+cat /tmp/cellos-acp.log
+
+# Custom log path
+cellos-acp run --log-file /var/log/my-agent.log "hello"
+```
 
 **JSON output format:**
 
@@ -251,6 +267,22 @@ _registry.register(AgentAdapter(
 ))
 # Now available as: AcpClient(agent="my-agent")
 ```
+
+### Logging
+
+Enable file-based debug logging with `configure_logging()`. Logs go only to a file — they never affect stdout or Python return values.
+
+```python
+from cellos_acp import configure_logging, AcpClient
+
+# Configure logging (default: /tmp/cellos-acp.log)
+log_file = configure_logging("/tmp/my-agent.log")
+
+# Or use default path
+configure_logging()
+```
+
+Logs include client initialization, process spawn, session creation, prompt data, event chunks, tool calls, permission decisions, and errors with full tracebacks. Long content is truncated with a `[TRUNCATED: N chars total]` marker.
 
 ## Adapters
 
