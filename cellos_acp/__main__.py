@@ -43,13 +43,14 @@ def cli():
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--text", "text_output", is_flag=True, help="Only print combined text")
-@click.option("--log-file", default=DEFAULT_LOG_FILE, help="Log file path (default: /tmp/cellos-acp.log)")
+@click.option("--log-file", default=None, help="Path to debug log file (opt-in)")
 def run(
     prompt, agent, custom_cmd, custom_args, cwd, timeout, text_wait, no_approve, json_output, text_output, log_file
 ):
     """Run a prompt against an ACP agent."""
 
-    configure_logging(log_file)
+    if log_file:
+        configure_logging(log_file)
 
     client = AcpClient(
         agent=agent,

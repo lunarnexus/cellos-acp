@@ -122,7 +122,7 @@ cellos-acp run [OPTIONS] PROMPT
 | `--no-approve` | `false` | Don't auto-approve permission requests |
 | `--json` | `false` | Output result as JSON |
 | `--text` | `false` | Only print combined text |
-| `--log-file` | `/tmp/cellos-acp.log` | Path to debug log file |
+| `--log-file` | *(none)* | Path to debug log file (opt-in) |
 
 **Examples:**
 
@@ -164,7 +164,7 @@ If `text` is empty, shows `(empty)` instead. If `thinking` is empty, that sectio
 
 **Debug logging:**
 
-All runs write debug logs to a file (default: `/tmp/cellos-acp.log`). Logs include errors, process spawn details, session IDs, prompt data, event chunks, tool calls, and permission decisions. Long content is truncated with a `[TRUNCATED: N chars total]` marker. Logs go only to the file — they never appear in CLI output or affect Python return values.
+Pass `--log-file` to write debug logs to a file. Logs include errors, process spawn details, session IDs, prompt data, event chunks, tool calls, and permission decisions. Long content is truncated with a `[TRUNCATED: N chars total]` marker. Logs go only to the file — they never appear in CLI output or affect Python return values.
 
 ```bash
 # Check the log after a run
@@ -275,11 +275,8 @@ Enable file-based debug logging with `configure_logging()`. Logs go only to a fi
 ```python
 from cellos_acp import configure_logging, AcpClient
 
-# Configure logging (default: /tmp/cellos-acp.log)
+# Configure logging to a file
 log_file = configure_logging("/tmp/my-agent.log")
-
-# Or use default path
-configure_logging()
 ```
 
 Logs include client initialization, process spawn, session creation, prompt data, event chunks, tool calls, permission decisions, and errors with full tracebacks. Long content is truncated with a `[TRUNCATED: N chars total]` marker.
