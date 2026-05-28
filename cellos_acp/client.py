@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import time
 from typing import Any
 from uuid import uuid4
 
@@ -46,6 +47,10 @@ class _EventCollector:
         self.thinking_parts: list[str] = []
         self.tool_calls: dict[str, ToolCallRecord] = {}
         self.stop_reason: str = ""
+        self.last_update_time: float = 0.0
+
+    def mark_update(self) -> None:
+        self.last_update_time = time.monotonic()
 
     def on_message_chunk(self, chunk: AgentMessageChunk) -> None:
         content = getattr(chunk, "content", None)
@@ -119,12 +124,16 @@ class _AcpClientImpl(Client):
         update_type = type(update).__name__
         logger.debug("session_update session=%s type=%s", session_id, update_type)
         if isinstance(update, AgentMessageChunk):
+            self.collector.mark_update()
             self.collector.on_message_chunk(update)
         elif isinstance(update, AgentThoughtChunk):
+            self.collector.mark_update()
             self.collector.on_thought_chunk(update)
         elif isinstance(update, ToolCallStart):
+            self.collector.mark_update()
             self.collector.on_tool_start(update)
         elif isinstance(update, ToolCallProgress):
+            self.collector.mark_update()
             self.collector.on_tool_progress(update)
 
     async def request_permission(
@@ -200,8 +209,9 @@ class AcpClient:
             env: Extra environment variables.
             auto_approve: Auto-approve all permission requests.
             timeout: Total timeout in seconds for the entire lifecycle.
-            text_wait: Seconds to wait after response for late streaming chunks.
-                Set to 0 to disable. Default 1.0 for agents that send chunks after result.
+            text_wait: Seconds of idle time after the latest streaming update before
+                returning. Set to 0 to disable. Default 1.0 for agents that send
+                chunks after result.
         """
         from .registry import get_adapter
 
@@ -234,8 +244,8 @@ class AcpClient:
     async def run(self, prompt: str) -> AcpRunResult:
         """Execute a prompt against the agent and return the result.
 
-        After the prompt response arrives, waits `text_wait` seconds
-        to catch late streaming chunks (opencode sends chunks after result).
+        After the prompt response arrives, waits until streaming updates have been
+        idle for `text_wait` seconds (opencode sends chunks after result).
         """
 
         impl = _AcpClientImpl(
@@ -286,11 +296,33 @@ class AcpClient:
                         impl.collector.stop_reason,
                     )
 
-                # Wait for late events (opencode sends chunks after result)
-                # Only wait if text_wait > 0
+                # Wait until late events go idle (opencode sends chunks after result).
                 if self._text_wait > 0:
-                    logger.debug("waiting %.1fs for late chunks", self._text_wait)
-                    await asyncio.sleep(self._text_wait)
+                    drain_start = time.monotonic()
+                    idle_since = max(impl.collector.last_update_time, drain_start)
+                    max_wait = min(self._text_wait * 5, 30.0)
+                    logger.debug(
+                        "waiting for late chunks idle=%.1fs max=%.1fs",
+                        self._text_wait,
+                        max_wait,
+                    )
+                    while True:
+                        now = time.monotonic()
+                        latest_update = max(
+                            impl.collector.last_update_time, idle_since
+                        )
+                        if latest_update != idle_since:
+                            idle_since = latest_update
+                            logger.debug("late chunk observed; resetting idle wait")
+                        if now - idle_since >= self._text_wait:
+                            logger.debug("late chunks idle for %.1fs", self._text_wait)
+                            break
+                        if now - drain_start >= max_wait:
+                            logger.warning(
+                                "late chunk drain timed out after %.1fs", max_wait
+                            )
+                            break
+                        await asyncio.sleep(0.05)
 
                 return impl.collector.to_result()
 

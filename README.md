@@ -51,7 +51,7 @@ cellos-acp
 | Schema models (Pydantic) | ✅ | Uses them |
 | Agent registry | ❌ | Built-in + extensible |
 | Unified `AcpRunResult` | ❌ | `.text`, `.thinking`, `.tool_calls` |
-| Late-chunk handling | ❌ | Configurable text wait |
+| Late-chunk handling | ❌ | Configurable idle drain |
 | Auto-approve permissions | ❌ | Configurable default |
 | CLI | ❌ | `cellos-acp run/list` |
 
@@ -118,7 +118,7 @@ cellos-acp run [OPTIONS] PROMPT
 | `--custom-args` | *(none)* | Override args (repeatable, ignores adapter) |
 | `--cwd` | `.` | Working directory for the agent |
 | `--timeout` | `300` | Total timeout in seconds |
-| `--text-wait` | `1.0` | Seconds to wait for late streaming chunks (0 to disable) |
+| `--text-wait` | `1.0` | Idle seconds to wait for late streaming chunks (0 to disable) |
 | `--no-approve` | `false` | Don't auto-approve permission requests |
 | `--json` | `false` | Output result as JSON |
 | `--text` | `false` | Only print combined text |
@@ -217,7 +217,7 @@ async def main():
         env={"VAR": "val"},     # extra environment variables
         auto_approve=True,      # auto-approve permission requests
         timeout=300,            # total timeout in seconds (None = no timeout)
-        text_wait=1.0,          # seconds to wait for late streaming chunks
+        text_wait=1.0,          # idle seconds to wait for late streaming chunks
     )
     result = await client.run("Explain the codebase")
 
@@ -298,7 +298,7 @@ Logs include client initialization, process spawn, session creation, prompt data
 
 ### Late streaming chunks
 
-Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits `text_wait` seconds (default 1.0) after the response to catch late events. Set to 0 to disable. The Python API default timeout is 300 seconds; pass `timeout=None` for no timeout.
+Some agents send chunks AFTER the `PromptResponse` arrives. `cellos-acp` waits until late streaming updates have been idle for `text_wait` seconds (default 1.0) before returning. The idle drain has a hard cap of 5x `text_wait`, up to 30 seconds, to avoid hanging if an agent keeps streaming. Set `text_wait=0` to disable. The Python API default timeout is 300 seconds; pass `timeout=None` for no timeout.
 
 ## Testing
 

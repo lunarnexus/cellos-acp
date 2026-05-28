@@ -21,7 +21,7 @@ class AcpJsonFilter(logging.Filter):
 
 logging.getLogger().addFilter(AcpJsonFilter())
 
-from . import configure_logging, DEFAULT_LOG_FILE
+from . import configure_logging
 from .client import AcpClient
 from .registry import _registry
 
@@ -39,7 +39,7 @@ def cli():
 @click.option("--custom-args", multiple=True, help="Custom args (repeatable)")
 @click.option("--cwd", default=".", help="Working directory")
 @click.option("--timeout", type=float, default=300, help="Timeout in seconds (default: 300)")
-@click.option("--text-wait", type=float, default=1.0, help="Seconds to wait for late chunks (0 to disable)")
+@click.option("--text-wait", type=float, default=1.0, help="Idle seconds to wait for late chunks (0 to disable)")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--text", "text_output", is_flag=True, help="Only print combined text")
