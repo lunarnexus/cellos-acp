@@ -50,9 +50,10 @@ cellos-acp
 | Subprocess + JSON-RPC framing | ✅ | Uses it |
 | Schema models (Pydantic) | ✅ | Uses them |
 | Agent registry | ❌ | Built-in + extensible |
-| Unified `AcpRunResult` | ❌ | `.text`, `.thinking`, `.tool_calls` |
+| Unified `AcpRunResult` | ❌ | `.text`, `.thinking`, diagnostics |
 | Late-chunk handling | ❌ | Configurable idle drain |
 | Auto-approve permissions | ❌ | Configurable default |
+| Structured output tools | ❌ | MCP helper + tool capture |
 | CLI | ❌ | `cellos-acp run/list` |
 
 ## Installation
@@ -119,6 +120,8 @@ cellos-acp run [OPTIONS] PROMPT
 | `--cwd` | `.` | Working directory for the agent |
 | `--timeout` | `300` | Total timeout in seconds |
 | `--text-wait` | `1.0` | Idle seconds to wait for late streaming chunks (0 to disable) |
+| `--model` | *(none)* | Override the opencode model via env config |
+| `--output-tool` | *(none)* | Expose a structured output tool to the agent |
 | `--no-approve` | `false` | Don't auto-approve permission requests |
 | `--json` | `false` | Output result as JSON |
 | `--text` | `false` | Only print combined text |
@@ -135,6 +138,9 @@ cellos-acp run --text "What is 2+2?"
 
 # JSON output — structured result
 cellos-acp run --json "What is 2+2?"
+
+# Structured output tool
+cellos-acp run --output-tool cellos_submit_reply --json "Reply with a structured result"
 
 # With debug log file
 cellos-acp run --log-file /tmp/my-log.log "What is 2+2?"
@@ -181,9 +187,23 @@ cellos-acp run --log-file /var/log/my-agent.log "hello"
   "text": "The answer is 4.",
   "thinking": "The user wants me to...",
   "tool_calls": [],
+  "structured_result": null,
   "stop_reason": "end_turn",
   "error": null,
-  "success": true
+  "success": true,
+  "diagnostics": {
+    "session_id": "ses_...",
+    "message_id": "msg_...",
+    "started_at": "...",
+    "completed_at": "...",
+    "last_event_at": "...",
+    "last_event_type": "AgentMessageChunk",
+    "timeout": false,
+    "aborted": false,
+    "error_type": null,
+    "error_message": null,
+    "active_tool_calls": []
+  }
 }
 ```
 
@@ -215,6 +235,7 @@ async def main():
         args=None,              # override args (ignores adapter)
         cwd="/tmp/project",     # working directory
         env={"VAR": "val"},     # extra environment variables
+        model="lmstudio/qwen3.6-35b-a3b-mtp",  # opencode model override
         auto_approve=True,      # auto-approve permission requests
         timeout=300,            # total timeout in seconds (None = no timeout)
         text_wait=1.0,          # idle seconds to wait for late streaming chunks
@@ -231,9 +252,21 @@ asyncio.run(main())
 class AcpRunResult:
     text: str                    # from AgentMessageChunk events
     thinking: str                # from AgentThoughtChunk events
-    tool_calls: list[ToolCallRecord]  # tool call records
+    tool_calls: list[ToolCallRecord]  # all tool call records
+    active_tool_calls: list[ToolCallRecord]  # unfinished tool calls
+    structured_result: StructuredResult | None
     stop_reason: str             # e.g. "end_turn"
     error: Exception | None      # exception if failed
+    session_id: str | None
+    message_id: str | None
+    started_at: str | None
+    completed_at: str | None
+    last_event_at: str | None
+    last_event_type: str | None
+    timeout: bool
+    aborted: bool
+    error_type: str | None
+    error_message: str | None
 
     @property
     def success(self) -> bool:   # True if error is None
@@ -251,6 +284,39 @@ class ToolCallRecord:
     status: str          # latest status from tool progress events, or ""
     raw_input: dict
     raw_output: Any
+    started_at: str | None
+    updated_at: str | None
+    nested_session_id: str | None
+```
+
+### `StructuredResult`
+
+```python
+@dataclass
+class StructuredResult:
+    kind: str
+    data: dict[str, Any]
+    source: str
+    tool_call_id: str | None
+    tool_name: str | None
+```
+
+### Structured output tools
+
+Use `output_tools` plus `required_output_tool` to ask the agent to submit a structured result via MCP instead of parsing prose:
+
+```python
+from cellos_acp import AcpClient, make_reply_schema
+
+client = AcpClient(agent="opencode")
+result = await client.run(
+    "Summarize the changes",
+    output_tools=[make_reply_schema()],
+    required_output_tool="cellos_submit_reply",
+)
+
+if result.structured_result:
+    print(result.structured_result.data["summary"])
 ```
 
 ### Registry
