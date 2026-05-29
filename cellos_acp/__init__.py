@@ -3,14 +3,20 @@
 import logging
 from datetime import datetime, timezone
 
-from .result import AcpRunResult, ToolCallRecord
+from .result import AcpRunResult, StructuredResult, ToolCallRecord
 from .client import AcpClient
+from .schemas import make_blocker_schema, make_prompt_schema, make_reply_schema, schema_for_tool_name
 from .registry import AgentAdapter, AgentRegistry, get_adapter
 
 __all__ = [
     "AcpClient",
     "AcpRunResult",
+    "StructuredResult",
     "ToolCallRecord",
+    "make_prompt_schema",
+    "make_reply_schema",
+    "make_blocker_schema",
+    "schema_for_tool_name",
     "AgentAdapter",
     "AgentRegistry",
     "get_adapter",

@@ -48,7 +48,6 @@ class TestE2EOpencode:
             client = AcpClient(
                 agent="opencode",
                 cwd=str(Path.cwd()),
-                timeout=30,
             )
             result = await client.run("Respond with exactly: SMOKE_TEST_OK")
             assert result.success
@@ -68,7 +67,6 @@ class TestE2EOpencode:
             client = AcpClient(
                 agent="opencode",
                 cwd=str(Path.cwd()),
-                timeout=30,
             )
             result = await client.run("What is 2+2? Answer with just the number.")
             assert result.success
@@ -86,7 +84,7 @@ class TestE2EOpencode:
             [sys.executable, "-m", "cellos_acp", "run", "--agent", "opencode", "--json", "Say hello"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=360,
             cwd=str(Path.cwd()),
         )
         assert result.returncode == 0
@@ -108,7 +106,7 @@ class TestE2EOpencode:
             [sys.executable, "-m", "cellos_acp", "run", "--agent", "opencode", "--text", "Say hello"],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=360,
             cwd=str(Path.cwd()),
         )
         assert result.returncode == 0
@@ -128,7 +126,6 @@ class TestE2EOpencode:
                 command="opencode",
                 args=["acp"],
                 cwd=str(Path.cwd()),
-                timeout=30,
             )
             result = await client.run("Respond with exactly: CUSTOM_CMD_OK")
             assert result.success
@@ -240,7 +237,7 @@ class TestE2ELogging:
             ],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=360,
             cwd=str(Path.cwd()),
         )
         assert result.returncode == 0
@@ -265,7 +262,7 @@ class TestE2ELogging:
             ],
             capture_output=True,
             text=True,
-            timeout=30,
+            timeout=360,
             cwd=str(Path.cwd()),
         )
         assert result.returncode == 0
@@ -294,7 +291,6 @@ class TestE2ELogging:
             return await AcpClient(
                 agent="opencode",
                 cwd=str(Path.cwd()),
-                timeout=30,
             ).run("Say hi")
 
         if opencode_installed:

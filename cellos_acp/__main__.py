@@ -23,6 +23,7 @@ logging.getLogger().addFilter(AcpJsonFilter())
 
 from . import configure_logging
 from .client import AcpClient
+from .schemas import schema_for_tool_name
 from .registry import _registry
 
 
@@ -40,12 +41,14 @@ def cli():
 @click.option("--cwd", default=".", help="Working directory")
 @click.option("--timeout", type=float, default=300, help="Timeout in seconds (default: 300)")
 @click.option("--text-wait", type=float, default=1.0, help="Idle seconds to wait for late chunks (0 to disable)")
+@click.option("--model", default=None, help="Override the agent model (opencode config env)")
+@click.option("--output-tool", default=None, help="Expose a structured output tool to the agent")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--text", "text_output", is_flag=True, help="Only print combined text")
 @click.option("--log-file", default=None, help="Path to debug log file (opt-in)")
 def run(
-    prompt, agent, custom_cmd, custom_args, cwd, timeout, text_wait, no_approve, json_output, text_output, log_file
+    prompt, agent, custom_cmd, custom_args, cwd, timeout, text_wait, model, output_tool, no_approve, json_output, text_output, log_file
 ):
     """Run a prompt against an ACP agent."""
 
@@ -57,12 +60,25 @@ def run(
         command=custom_cmd,
         args=list(custom_args) if custom_args else None,
         cwd=cwd,
+        model=model,
         auto_approve=not no_approve,
         timeout=timeout,
         text_wait=text_wait,
     )
 
-    result = asyncio.run(client.run(prompt))
+    output_tools = None
+    required_output_tool = None
+    if output_tool:
+        output_tools = [schema_for_tool_name(output_tool)]
+        required_output_tool = output_tool
+
+    result = asyncio.run(
+        client.run(
+            prompt,
+            output_tools=output_tools,
+            required_output_tool=required_output_tool,
+        )
+    )
 
     if json_output:
         click.echo(json.dumps(_result_to_dict(result), indent=2))
@@ -107,12 +123,51 @@ def _result_to_dict(result) -> dict:
                 "id": tc.tool_call_id,
                 "title": tc.title,
                 "status": tc.status,
+                "started_at": tc.started_at,
+                "updated_at": tc.updated_at,
+                "nested_session_id": tc.nested_session_id,
             }
             for tc in result.tool_calls
         ],
+        "structured_result": (
+            {
+                "kind": result.structured_result.kind,
+                "source": result.structured_result.source,
+                "tool_call_id": result.structured_result.tool_call_id,
+                "tool_name": result.structured_result.tool_name,
+                "data": result.structured_result.data,
+            }
+            if result.structured_result
+            else None
+        ),
         "stop_reason": result.stop_reason,
         "error": str(result.error) if result.error else None,
         "success": result.success,
+        "diagnostics": {
+            "session_id": result.session_id,
+            "message_id": result.message_id,
+            "started_at": result.started_at,
+            "completed_at": result.completed_at,
+            "last_event_at": result.last_event_at,
+            "last_event_type": result.last_event_type,
+            "last_message_preview": result.last_message_preview,
+            "last_thought_preview": result.last_thought_preview,
+            "timeout": result.timeout,
+            "aborted": result.aborted,
+            "error_type": result.error_type,
+            "error_message": result.error_message,
+            "active_tool_calls": [
+                {
+                    "id": tc.tool_call_id,
+                    "title": tc.title,
+                    "status": tc.status,
+                    "started_at": tc.started_at,
+                    "updated_at": tc.updated_at,
+                    "nested_session_id": tc.nested_session_id,
+                }
+                for tc in result.active_tool_calls
+            ],
+        },
     }
 
 
