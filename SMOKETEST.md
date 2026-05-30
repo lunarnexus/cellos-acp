@@ -2,12 +2,9 @@
 
 **Process:**
 The user wants you to step through each step one-by-one.  Before each step, list
- the step and commands, what the step proves, what we should expect to see, then
- pause for the user go-ahead.  After approval, run the test step, list all test
-outputs.
-If there's a failure, stop the test and explain, don't attempt to fix anything.
+ the step and commands, what the step proves, what we should expect to see.  Then run the step and display the output. If there'a a failure stop and explain, do not try to repair, do not make changes.  
 
-All tests use `opencode` (default agent). Steps 1-6, 13-14, 17, 23 are CLI. Steps 7-12, 15-16, 18-22, 24 are Python API (run from project dir with `uv run`). Steps 10-11 are unit tests.
+All tests use `opencode` (default agent). Steps marked CLI are run directly; steps marked API use Python from project dir with `uv run`. Unit-tested features (registry, result dataclass, env param, unknown agent error, structured result capture) are already covered by automated tests and omitted here.
 
 ## Prerequisites
 
@@ -68,7 +65,7 @@ cellos-acp run "Say hi" --custom-cmd opencode --custom-args acp --timeout 60 --t
 ## 5. CLI: Timeout (preserves partial state)
 
 ```bash
-cellos-acp run "Write a detailed 500-word essay about the history of computing" --timeout 2 --json
+cellos-acp run "Write a detailed 500-word essay about the history of computing" --timeout 5 --json
 ```
 
 **Expected:** JSON with `success: false`, `error` containing "timeout", and `diagnostics` with `timeout: true`, `error_type: "TimeoutError"`, `session_id`, `message_id`, `started_at`, `completed_at`, and `last_event_type`. The `text` and `thinking` fields may contain partial output collected before the timeout.
@@ -157,62 +154,7 @@ asyncio.run(main())
 
 ---
 
-## 10. Registry: Get adapter
-
-```bash
-uv run python3 -c "
-from cellos_acp import get_adapter, AgentRegistry
-
-adapter = get_adapter('opencode')
-assert adapter.command == 'opencode' and adapter.args == ['acp']
-print(f'OK: {adapter.full_command()}')
-
-try:
-    get_adapter('nonexistent')
-except KeyError:
-    print('OK: KeyError for unknown agent')
-
-print(f'OK: {len(AgentRegistry().list_names())} adapters')
-"
-```
-
-**Expected:** Three `OK:` lines.
-
----
-
-## 11. Result dataclass
-
-```bash
-uv run python3 -c "
-from cellos_acp import AcpRunResult, ToolCallRecord
-
-assert AcpRunResult(text='hi').success and AcpRunResult(text='hi').combined_text == 'hi'
-assert not AcpRunResult(error=RuntimeError('boom')).success
-assert AcpRunResult(thinking='fallback').combined_text == 'fallback'
-
-# Verify diagnostic fields exist with defaults
-r = AcpRunResult(text='hi')
-assert r.session_id is None
-assert r.message_id is None
-assert r.timeout is False
-assert r.aborted is False
-assert r.error_type is None
-assert r.active_tool_calls == []
-
-# Verify ToolCallRecord diagnostic fields
-tc = ToolCallRecord(tool_call_id='tc_1', title='test')
-assert tc.started_at is None
-assert tc.updated_at is None
-assert tc.nested_session_id is None
-print('OK: result tests passed')
-"
-```
-
-**Expected:** `OK: result tests passed`
-
----
-
-## 12. Python API: text_wait=0
+## 10. Python API: text_wait=0
 
 ```bash
 uv run python3 -c "
@@ -235,7 +177,7 @@ asyncio.run(main())
 
 ---
 
-## 13. CLI: --text-wait=0
+## 11. CLI: --text-wait=0
 
 ```bash
 cellos-acp run "Say hi" --text-wait 0 --text
@@ -245,7 +187,7 @@ cellos-acp run "Say hi" --text-wait 0 --text
 
 ---
 
-## 14. CLI: --cwd option
+## 12. CLI: --cwd option
 
 ```bash
 cellos-acp run "What directory are you in?" --cwd /tmp --text
@@ -255,47 +197,7 @@ cellos-acp run "What directory are you in?" --cwd /tmp --text
 
 ---
 
-## 15. Python API: env parameter
-
-```bash
-uv run python3 -c "
-import asyncio
-from cellos_acp import AcpClient
-
-async def main():
-    # env is merged with adapter env; verify it's accepted without error
-    client = AcpClient(agent='opencode', env={'TEST_VAR': 'hello'})
-    assert client._env.get('TEST_VAR') == 'hello'
-    print('OK: env parameter accepted')
-
-asyncio.run(main())
-"
-```
-
-**Expected:** `OK: env parameter accepted`
-
----
-
-## 16. Python API: Unknown agent error
-
-```bash
-uv run python3 -c "
-from cellos_acp import AcpClient
-
-try:
-    AcpClient(agent='nonexistent')
-    print('FAIL: should have raised KeyError')
-except KeyError as e:
-    assert 'nonexistent' in str(e)
-    print('OK: unknown agent raises KeyError in __init__')
-"
-```
-
-**Expected:** `OK: unknown agent raises KeyError in __init__`
-
----
-
-## 17. CLI: Agent not found (binary missing)
+## 13. CLI: Agent not found (binary missing)
 
 ```bash
 cellos-acp run --custom-cmd nonexistent_binary --custom-args test "hi" --json
@@ -305,7 +207,7 @@ cellos-acp run --custom-cmd nonexistent_binary --custom-args test "hi" --json
 
 ---
 
-## 18. Python API: Tool call collection and active tool calls
+## 14. Python API: Tool call collection and active tool calls
 
 ```bash
 uv run python3 -c "
@@ -329,7 +231,7 @@ asyncio.run(main())
 
 ---
 
-## 19. CLI: Debug log file
+## 15. CLI: Debug log file
 
 ```bash
 cellos-acp run "Say hi" --log-file /tmp/cellos-smoketest.log --text
@@ -345,7 +247,7 @@ cat /tmp/cellos-smoketest.log
 
 ---
 
-## 20. Python API: Logging configuration
+## 16. Python API: Logging configuration
 
 ```bash
 uv run python3 -c "
@@ -374,7 +276,7 @@ cat /tmp/cellos-smoketest-py.log
 
 ---
 
-## 21. Python API: Diagnostics in result
+## 17. Python API: Diagnostics in result
 
 ```bash
 uv run python3 -c "
@@ -399,7 +301,7 @@ asyncio.run(main())
 
 ---
 
-## 22. Python API: on_event callback
+## 18. Python API: on_event callback
 
 ```bash
 uv run python3 -c "
@@ -427,7 +329,7 @@ asyncio.run(main())
 
 ---
 
-## 23. CLI: JSON diagnostics on success
+## 19. CLI: JSON diagnostics on success
 
 ```bash
 cellos-acp run "Say hi" --json | python3 -c "
@@ -451,43 +353,6 @@ print('OK: diagnostics present in JSON output')
 
 ---
 
-## 24. Python API: Structured result capture
-
-```bash
-uv run python3 -c "
-from cellos_acp.client import _EventCollector
-from acp.schema import ToolCallStart, ToolCallProgress
-
-collector = _EventCollector()
-collector.set_required_output_tool('cellos_submit_reply')
-collector.on_tool_start(
-    ToolCallStart(
-        tool_call_id='tc_structured',
-        title='cellos_submit_reply',
-        raw_input={'summary': 'done', 'success': True},
-        session_update='tool_call',
-    )
-)
-collector.on_tool_progress(
-    ToolCallProgress(
-        tool_call_id='tc_structured',
-        title='cellos_submit_reply',
-        status='completed',
-        raw_output={'summary': 'done', 'success': True},
-        session_update='tool_call_update',
-    )
-)
-result = collector.to_result()
-assert result.structured_result is not None
-assert result.structured_result.data['summary'] == 'done'
-print('OK: structured result captured')
-"
-```
-
-**Expected:** `OK: structured result captured` — verifies structured-result capture without requiring a live agent.
-
----
-
 ## Summary
 
 | # | Test | Type | Live Agent? |
@@ -501,18 +366,15 @@ print('OK: structured result captured')
 | 7 | Import + run | API | yes |
 | 8 | combined_text fallback | API | yes |
 | 9 | Timeout (partial state) | API | yes |
-| 10 | Registry | Unit | no |
-| 11 | Result dataclass + diagnostics | Unit | no |
-| 12 | text_wait=0 | API | yes |
-| 13 | --text-wait=0 | CLI | yes |
-| 14 | --cwd option | CLI | yes |
-| 15 | env parameter | Unit | no |
-| 16 | Unknown agent error | API | no |
-| 17 | Binary missing error | CLI | no |
-| 18 | Tool call collection + active | API | yes |
-| 19 | Debug log file | CLI | yes |
-| 20 | Logging configuration | API | yes |
-| 21 | Diagnostics in result | API | yes |
-| 22 | on_event callback | API | yes |
-| 23 | JSON diagnostics on success | CLI | yes |
-| 24 | Structured result capture | API | no |
+| 10 | text_wait=0 | API | yes |
+| 11 | --text-wait=0 | CLI | yes |
+| 12 | --cwd option | CLI | yes |
+| 13 | Binary missing error | CLI | no |
+| 14 | Tool call collection + active | API | yes |
+| 15 | Debug log file | CLI | yes |
+| 16 | Logging configuration | API | yes |
+| 17 | Diagnostics in result | API | yes |
+| 18 | on_event callback | API | yes |
+| 19 | JSON diagnostics on success | CLI | yes |
+
+**Automated (not manual):** Registry lookup, Result dataclass fields, env parameter, Unknown agent error, Structured result capture — all covered by `pytest tests/test_client.py`.

@@ -40,8 +40,8 @@ class TestE2EOpencode:
         not opencode_installed,
         reason="opencode not installed",
     )
-    def test_smoke_test(self):
-        """Basic smoke test - agent responds with expected text."""
+    def test_basic_prompt(self):
+        """Agent responds to a basic prompt with expected text."""
         from cellos_acp import AcpClient
 
         async def run():
@@ -225,8 +225,8 @@ class TestE2ELogging:
         not opencode_installed,
         reason="opencode not installed",
     )
-    def test_cli_log_file_created(self, log_file):
-        """CLI --log-file creates log file with debug entries."""
+    def test_cli_log_file_contains_debug_entries(self, log_file):
+        """CLI --log-file creates log file with session and event debug entries."""
         result = subprocess.run(
             [
                 sys.executable, "-m", "cellos_acp", "run",
@@ -245,28 +245,6 @@ class TestE2ELogging:
         content = open(log_file).read()
         assert "DEBUG" in content
         assert "spawning" in content
-
-    @pytest.mark.skipif(
-        not opencode_installed,
-        reason="opencode not installed",
-    )
-    def test_cli_log_contains_session_and_prompt(self, log_file):
-        """Log file contains session creation and prompt data."""
-        result = subprocess.run(
-            [
-                sys.executable, "-m", "cellos_acp", "run",
-                "--agent", "opencode",
-                "--log-file", log_file,
-                "--text",
-                "Say hello"
-            ],
-            capture_output=True,
-            text=True,
-            timeout=360,
-            cwd=str(Path.cwd()),
-        )
-        assert result.returncode == 0
-        content = open(log_file).read()
         assert "session created" in content
         assert "sending prompt" in content
 
