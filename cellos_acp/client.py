@@ -16,6 +16,7 @@ from acp.schema import (
     AgentMessageChunk,
     AgentThoughtChunk,
     AllowedOutcome,
+    DeniedOutcome,
     ClientCapabilities,
     Implementation,
     PermissionOption,
@@ -25,7 +26,7 @@ from acp.schema import (
     ToolCallUpdate,
 )
 
-from .mcp_tools import spawn_mcp_server
+from .mcp_tools import CELLOS_MCP_SERVER, spawn_mcp_server
 from .result import AcpRunResult, StructuredResult, ToolCallRecord
 
 logger = logging.getLogger(__name__)
@@ -102,6 +103,20 @@ class _EventCollector:
     @staticmethod
     def _payload_to_dict(payload: Any) -> dict[str, Any]:
         if isinstance(payload, dict):
+            # MCP tool output format: {"output": "{...}", "metadata": {...}}
+            if "output" in payload:
+                output_val = payload["output"]
+                if isinstance(output_val, str):
+                    try:
+                        import json
+                        output_val = json.loads(output_val)
+                    except (json.JSONDecodeError, ValueError):
+                        pass
+                if isinstance(output_val, dict):
+                    if set(output_val.keys()) == {"result"} and isinstance(output_val["result"], dict):
+                        return output_val["result"]
+                    return output_val
+            # Direct result format
             if set(payload.keys()) == {"result"} and isinstance(payload["result"], dict):
                 return payload["result"]
             return payload
@@ -118,10 +133,13 @@ class _EventCollector:
         payload: Any,
         *,
         overwrite: bool = False,
+        title: str | None = None,
     ) -> None:
         if not self._required_output_tool:
             return
-        if update.title != self._required_output_tool:
+        actual_title = title or update.title
+        expected_title = f"{CELLOS_MCP_SERVER}_{self._required_output_tool}"
+        if actual_title not in {self._required_output_tool, expected_title}:
             return
         if self.structured_result is not None and not overwrite:
             return
@@ -130,7 +148,7 @@ class _EventCollector:
             data=self._payload_to_dict(payload),
             source="tool_call",
             tool_call_id=update.tool_call_id,
-            tool_name=update.title,
+            tool_name=actual_title,
         )
 
     def on_message_chunk(self, chunk: AgentMessageChunk) -> None:
@@ -191,7 +209,9 @@ class _EventCollector:
                 rec.nested_session_id = self._extract_nested_session_id(raw_output)
             if update.status and update.status.lower() in self._TERMINAL_STATUSES:
                 self.active_tool_calls.pop(update.tool_call_id, None)
-            self._maybe_capture_structured_result(update, raw_output, overwrite=True)
+            self._maybe_capture_structured_result(
+                update, raw_output, overwrite=True, title=rec.title
+            )
             logger.debug(
                 "tool_progress id=%s status=%s nested_id=%s output=%s",
                 update.tool_call_id,
@@ -315,7 +335,7 @@ class _AcpClientImpl(Client):
                     "No 'allow' option found in permission request; cancelling."
                 )
                 return RequestPermissionResponse(
-                    outcome=AllowedOutcome(outcome="cancelled")
+                    outcome=DeniedOutcome(outcome="cancelled")
                 )
             logger.debug("permission auto-approved: option=%s", allow_id)
             return RequestPermissionResponse(
@@ -323,7 +343,7 @@ class _AcpClientImpl(Client):
             )
         logger.debug("permission denied (auto_approve=False)")
         return RequestPermissionResponse(
-            outcome=AllowedOutcome(outcome="cancelled")
+            outcome=DeniedOutcome(outcome="cancelled")
         )
 
 

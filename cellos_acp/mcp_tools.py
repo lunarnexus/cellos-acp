@@ -12,6 +12,9 @@ from typing import Any
 from acp.schema import McpServerStdio
 
 
+CELLOS_MCP_SERVER = "cellos-result-tools"
+
+
 @dataclass
 class _McpServerProcess:
     """Manages a spawned ephemeral MCP server subprocess."""
@@ -33,6 +36,7 @@ def _build_mcp_script(tool_schemas: list[dict[str, Any]]) -> str:
         from fastmcp import FastMCP
         from fastmcp.tools.function_tool import Tool
 
+        CELLOS_MCP_SERVER = "cellos-result-tools"
         TOOL_DEFS = json.loads({tools_json!r})
 
         def _python_type(schema: dict[str, Any]) -> str:
@@ -75,7 +79,7 @@ def _build_mcp_script(tool_schemas: list[dict[str, Any]]) -> str:
             body = "\\n".join(payload_lines)
             return f"def tool_{{index}}({{signature}}):\\n{{body}}"
 
-        mcp = FastMCP("cellos-result-tools")
+        mcp = FastMCP(CELLOS_MCP_SERVER)
 
         for index, tool_def in enumerate(TOOL_DEFS):
             namespace = {{"Any": Any}}
@@ -101,7 +105,7 @@ def _build_mcp_script(tool_schemas: list[dict[str, Any]]) -> str:
 
 def spawn_mcp_server(
     tool_schemas: list[dict[str, Any]],
-    server_name: str = "cellos-result-tools",
+    server_name: str = CELLOS_MCP_SERVER,
 ) -> _McpServerProcess:
     script = _build_mcp_script(tool_schemas)
     proc = subprocess.Popen(
