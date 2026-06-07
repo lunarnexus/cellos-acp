@@ -359,13 +359,13 @@ Logs include client initialization, process spawn, session creation, prompt data
 | Name | Command | Status |
 |---|---|---|
 | `opencode` | `opencode acp` | ✅ Working |
+| `hermes` | `hermes acp` | ✅ Working |
 | `claude` | `claude --experimental-acp` | Future |
 | `codex` | `codex --acp` | Future |
-| `hermes` | `hermes acp` | Future |
 | `openclaw` | `acpx openclaw exec` | Future |
 | `pi` | `pi acp` | Future |
 
-> **Note:** Only `opencode` is currently tested and working. Other adapters are placeholders for future integration.
+> **Note:** `opencode` and `hermes` are currently tested and working. Other adapters are placeholders for future integration.
 
 ### Late streaming chunks
 

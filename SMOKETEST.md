@@ -6,6 +6,8 @@ The user wants you to step through each step one-by-one.  Before each step, list
 
 All tests use `opencode` (default agent). Steps marked CLI are run directly; steps marked API use Python from project dir with `uv run`. Unit-tested features (registry, result dataclass, env param, unknown agent error, structured result capture) are already covered by automated tests and omitted here.
 
+Minimal Hermes coverage is included to catch connector regressions without duplicating the full opencode matrix.
+
 ## Prerequisites
 
 ```bash
@@ -81,6 +83,16 @@ cellos-acp run "Say something brief" --no-approve --text
 ```
 
 **Expected:** Agent responds without crashing.
+
+---
+
+## 6a. CLI: Hermes simple prompt
+
+```bash
+cellos-acp run --agent hermes --timeout 300 --text "Respond with exactly: HERMES_SMOKE_OK"
+```
+
+**Expected:** `HERMES_SMOKE_OK`
 
 ---
 
