@@ -121,6 +121,7 @@ cellos-acp run [OPTIONS] PROMPT
 | `--timeout` | `300` | Total timeout in seconds |
 | `--text-wait` | `1.0` | Idle seconds to wait for late streaming chunks (0 to disable) |
 | `--model` | *(none)* | Override the opencode model via env config |
+| `--hermes-profile` | *(none)* | Launch Hermes ACP with an explicit Hermes profile |
 | `--output-tool` | *(none)* | Expose a structured output tool to the agent |
 | `--no-approve` | `false` | Don't auto-approve permission requests |
 | `--json` | `false` | Output result as JSON |
@@ -141,6 +142,9 @@ cellos-acp run --json "What is 2+2?"
 
 # Structured output tool
 cellos-acp run --output-tool cellos_submit_reply --json "Reply with a structured result"
+
+# Hermes ACP with an explicit Hermes profile
+cellos-acp run --agent hermes --hermes-profile sera --timeout 300 --text "Say hello"
 
 # With debug log file
 cellos-acp run --log-file /tmp/my-log.log "What is 2+2?"
@@ -236,6 +240,7 @@ async def main():
         cwd="/tmp/project",     # working directory
         env={"VAR": "val"},     # extra environment variables
         model="lmstudio/qwen3.6-35b-a3b-mtp",  # opencode model override
+        hermes_profile="sera",  # Hermes profile for per-run ACP launch
         auto_approve=True,      # auto-approve permission requests
         timeout=300,            # total timeout in seconds (None = no timeout)
         text_wait=1.0,          # idle seconds to wait for late streaming chunks

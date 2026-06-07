@@ -4,6 +4,7 @@ import asyncio
 import json
 import pytest
 from types import SimpleNamespace
+from click.testing import CliRunner
 
 
 # ── Result dataclass ────────────────────────────────────────────────
@@ -582,6 +583,43 @@ def test_model_parameter_injects_opencode_config_env():
     client = AcpClient(agent="opencode", model="lmstudio/test-model")
     assert "OPENCODE_CONFIG_CONTENT" in client._env
     assert json.loads(client._env["OPENCODE_CONFIG_CONTENT"])["model"] == "lmstudio/test-model"
+
+
+def test_hermes_profile_injects_profile_flag_into_command_args():
+    from cellos_acp.client import AcpClient
+
+    client = AcpClient(agent="hermes", hermes_profile="sera")
+
+    assert client._command == "hermes"
+    assert client._args == ["-p", "sera", "acp"]
+
+
+def test_hermes_profile_does_not_modify_other_agents():
+    from cellos_acp.client import AcpClient
+
+    client = AcpClient(agent="opencode", hermes_profile="sera")
+
+    assert client._command == "opencode"
+    assert client._args == ["acp"]
+
+
+def test_cli_rejects_hermes_profile_with_custom_command():
+    from cellos_acp.__main__ import cli
+
+    result = CliRunner().invoke(
+        cli,
+        [
+            "run",
+            "--custom-cmd",
+            "hermes",
+            "--hermes-profile",
+            "sera",
+            "hello",
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "--hermes-profile cannot be combined with --custom-cmd/--custom-args" in result.output
 
 
 # ── Schema helpers ─────────────────────────────────────────────────

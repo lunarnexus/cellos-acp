@@ -42,15 +42,21 @@ def cli():
 @click.option("--timeout", type=float, default=300, help="Timeout in seconds (default: 300)")
 @click.option("--text-wait", type=float, default=1.0, help="Idle seconds to wait for late chunks (0 to disable)")
 @click.option("--model", default=None, help="Override the agent model (opencode config env)")
+@click.option("--hermes-profile", default=None, help="Hermes profile name for per-run ACP launch")
 @click.option("--output-tool", default=None, help="Expose a structured output tool to the agent")
 @click.option("--no-approve", is_flag=True, help="Don't auto-approve permissions")
 @click.option("--json", "json_output", is_flag=True, help="Output result as JSON")
 @click.option("--text", "text_output", is_flag=True, help="Only print combined text")
 @click.option("--log-file", default=None, help="Path to debug log file (opt-in)")
 def run(
-    prompt, agent, custom_cmd, custom_args, cwd, timeout, text_wait, model, output_tool, no_approve, json_output, text_output, log_file
+    prompt, agent, custom_cmd, custom_args, cwd, timeout, text_wait, model, hermes_profile, output_tool, no_approve, json_output, text_output, log_file
 ):
     """Run a prompt against an ACP agent."""
+
+    if hermes_profile and (custom_cmd or custom_args):
+        raise click.UsageError(
+            "--hermes-profile cannot be combined with --custom-cmd/--custom-args"
+        )
 
     if log_file:
         configure_logging(log_file)
@@ -61,6 +67,7 @@ def run(
         args=list(custom_args) if custom_args else None,
         cwd=cwd,
         model=model,
+        hermes_profile=hermes_profile,
         auto_approve=not no_approve,
         timeout=timeout,
         text_wait=text_wait,

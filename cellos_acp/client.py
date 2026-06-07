@@ -370,6 +370,7 @@ class AcpClient:
         cwd: str = ".",
         env: dict[str, str] | None = None,
         model: str | None = None,
+        hermes_profile: str | None = None,
         auto_approve: bool = True,
         timeout: float | None = 300,
         text_wait: float = 1.0,
@@ -382,6 +383,7 @@ class AcpClient:
             cwd: Working directory for the agent.
             env: Extra environment variables.
             model: Optional opencode model name.
+            hermes_profile: Optional Hermes profile name for per-run ACP launch.
             auto_approve: Auto-approve all permission requests.
             timeout: Total timeout in seconds for the entire lifecycle.
             text_wait: Seconds of idle time after the latest streaming update before
@@ -399,6 +401,8 @@ class AcpClient:
             self._command = adapter.command
             self._args = adapter.args
             adapter_env = adapter.env or {}
+            if agent == "hermes" and hermes_profile:
+                self._args = ["-p", hermes_profile, *self._args]
 
         self._cwd = cwd
         self._env = {**adapter_env, **(env or {})}
@@ -408,6 +412,7 @@ class AcpClient:
         self._timeout = timeout
         self._text_wait = text_wait
         self._model = model
+        self._hermes_profile = hermes_profile
 
         logger.debug(
             "AcpClient init command=%s args=%s cwd=%s timeout=%s text_wait=%s auto_approve=%s",
