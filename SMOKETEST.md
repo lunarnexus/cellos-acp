@@ -30,7 +30,7 @@ which cellos-acp && which opencode
 cellos-acp list
 ```
 
-**Expected:** 6 agents listed with commands.
+**Expected:** 2 agents listed with commands.
 
 ---
 

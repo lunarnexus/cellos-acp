@@ -95,11 +95,7 @@ List available agent adapters:
 ```bash
 $ cellos-acp list
   opencode      opencode acp
-  claude        claude --experimental-acp
-  codex         codex --acp
   hermes        hermes acp
-  openclaw      acpx openclaw exec
-  pi            pi acp
 ```
 
 ### `cellos-acp run`
@@ -360,12 +356,6 @@ Logs include client initialization, process spawn, session creation, prompt data
 |---|---|---|
 | `opencode` | `opencode acp` | ✅ Working |
 | `hermes` | `hermes acp` | ✅ Working |
-| `claude` | `claude --experimental-acp` | Future |
-| `codex` | `codex --acp` | Future |
-| `openclaw` | `acpx openclaw exec` | Future |
-| `pi` | `pi acp` | Future |
-
-> **Note:** `opencode` and `hermes` are currently tested and working. Other adapters are placeholders for future integration.
 
 ### Late streaming chunks
 
