@@ -171,7 +171,6 @@ class TestE2EOpencode:
         )
         assert result.returncode == 0
         assert "opencode" in result.stdout
-        assert "claude" in result.stdout
         assert "hermes" in result.stdout
 
 

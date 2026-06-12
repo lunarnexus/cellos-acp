@@ -36,30 +36,10 @@ ADAPTERS: dict[str, AgentAdapter] = {
         command="opencode",
         args=["acp"],
     ),
-    "openclaw": AgentAdapter(
-        name="openclaw",
-        command="acpx",
-        args=["openclaw", "exec"],
-    ),
     "hermes": AgentAdapter(
         name="hermes",
         command="hermes",
         args=["acp"],
-    ),
-    "pi": AgentAdapter(
-        name="pi",
-        command="pi",
-        args=["acp"],
-    ),
-    "claude": AgentAdapter(
-        name="claude",
-        command="claude",
-        args=["--experimental-acp"],
-    ),
-    "codex": AgentAdapter(
-        name="codex",
-        command="codex",
-        args=["--acp"],
     ),
 }
 

@@ -82,7 +82,7 @@ def test_registry_list():
 
     names = _registry.list_names()
     assert "opencode" in names
-    assert len(names) >= 3
+    assert len(names) == 2
 
 
 # ── EventCollector: text / thinking ────────────────────────────────
