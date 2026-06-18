@@ -86,16 +86,6 @@ cellos-acp run "Say something brief" --no-approve --text
 
 ---
 
-## 6a. CLI: Hermes simple prompt
-
-```bash
-cellos-acp run --agent hermes --timeout 300 --text "Respond with exactly: HERMES_SMOKE_OK"
-```
-
-**Expected:** `HERMES_SMOKE_OK`
-
----
-
 ## 7. Python API: Import and run
 
 Run from project directory (`cd cellos-acp` first):
