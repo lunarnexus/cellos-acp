@@ -67,7 +67,7 @@ cellos-acp run "Say hi" --custom-cmd opencode --custom-args acp --timeout 60 --t
 ## 5. CLI: Timeout (preserves partial state)
 
 ```bash
-cellos-acp run "Write a detailed 500-word essay about the history of computing" --timeout 5 --json
+cellos-acp run "Write a detailed 500-word essay about the history of computing" --timeout 30 --json
 ```
 
 **Expected:** JSON with `success: false`, `error` containing "timeout", and `diagnostics` with `timeout: true`, `error_type: "TimeoutError"`, `session_id`, `message_id`, `started_at`, `completed_at`, and `last_event_type`. The `text` and `thinking` fields may contain partial output collected before the timeout.
@@ -136,7 +136,7 @@ import asyncio
 from cellos_acp import AcpClient
 
 async def main():
-    result = await AcpClient(agent='opencode', timeout=30, text_wait=0).run('Write a very long response')
+    result = await AcpClient(agent='opencode', timeout=8, text_wait=0).run('Write a very long response')
     assert not result.success
     assert result.timeout is True
     assert result.error_type == 'TimeoutError'
